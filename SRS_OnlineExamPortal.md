@@ -2,7 +2,7 @@
 
 **Project:** Online Exam Portal  
 **Version:** 1.0  
-**Authors:** [Your Name]  
+**Authors:** Dhanush R  
 **Date:** 29-09-2026  
 **Status:** Draft  
 
@@ -12,7 +12,7 @@
 
 | Version | Date | Author | Change Summary | Approval |
 |---|---|---|---|---|
-| 1.0 | 29-09-2026 | [Your Name] | Initial SRS draft | Pending |
+| 1.0 | 29-09-2026 | Dhanush R | Initial SRS draft | Pending |
 
 ---
 
@@ -347,18 +347,7 @@ The system is considered ready for acceptance when all of the following are sati
 
 **Description:** This diagram covers the complete lifecycle of a Student's interaction with the portal — from registration through to viewing their results. The auto-save and timer auto-submit behaviors are shown as extension/inclusion relationships to the core exam-taking use case.
 
-```
-[Student] --> (Register Account)
-[Student] --> (Login)
-[Student] --> (View Exam Schedule)
-[Student] --> (Start Exam)
-(Start Exam) ..> (Auto-Save Answers) : <<extends>>
-(Start Exam) ..> (Timer Auto-Submit) : <<includes>>
-[Student] --> (Submit Exam)
-[Student] --> (View Results)
-(View Results) ..> (Download Result PDF) : <<extends>>
-[Student] --> (Reset Password)
-```
+![Use-Case Diagram 1 — Student Exam Flow](usecase_diagram_1.png)
 
 ---
 
@@ -386,23 +375,7 @@ The system is considered ready for acceptance when all of the following are sati
 
 **Description:** This diagram covers the management side of the portal. It shows the two privileged roles and their distinct capabilities. The Admin has a separate set of use cases that overlap with user management and system monitoring, while the Teacher focuses on academic content and evaluation.
 
-```
-[Teacher] --> (Login)
-[Teacher] --> (Create Question)
-[Teacher] --> (Edit / Delete Question)
-[Teacher] --> (Create Exam)
-(Create Exam) ..> (Configure Exam Settings) : <<includes>>
-[Teacher] --> (Publish Exam)
-[Teacher] --> (Grade Short Answer Submissions)
-[Teacher] --> (Release Results)
-[Teacher] --> (View Class Analytics)
-
-[Admin] --> (Login)
-[Admin] --> (Create / Deactivate / Delete User)
-[Admin] --> (Assign Role to User)
-[Admin] --> (Monitor Active Exams)
-[Admin] --> (View System Health Dashboard)
-```
+![Use-Case Diagram 2 — Teacher & Admin Management Flow](usecase_diagram_2.png)
 
 ---
 
