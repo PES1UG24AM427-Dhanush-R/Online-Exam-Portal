@@ -1143,3 +1143,132 @@ Verify that state-changing requests are protected against Cross-Site Request For
 **Pass/Fail Criteria:**
 - **Pass:** Unauthorized state-changing requests are blocked and valid requests with the correct CSRF protection are accepted.
 - **Fail:** A state-changing request can be completed without valid CSRF protection.
+
+## 5. Test Schedule and Roles
+
+### 5.1 Test Schedule
+
+Testing activities will be carried out alongside the development and integration of the Online Exam Portal. The testing schedule is organized into the following phases:
+
+| Phase | Testing Activity | Main Focus | Responsible Role |
+|---|---|---|---|
+| Phase 1 | Unit Testing | Individual functions and components within each module | Developers |
+| Phase 2 | Integration Testing | Interfaces and interactions between modules and services | Developers / QA |
+| Phase 3 | System Testing | Complete end-to-end system functionality | QA Engineers |
+| Phase 4 | Non-Functional Testing | Performance, usability, accessibility, and error handling | QA Engineers |
+| Phase 5 | Security Testing | HTTPS/TLS, password hashing, JWT invalidation, input validation, and CSRF protection | QA / Developers |
+| Phase 6 | User Acceptance Testing | Validation by Student, Teacher, and Admin users against acceptance criteria | Project Team / Evaluators |
+| Phase 7 | Final Verification | RTM verification, defect review, regression testing, and final sign-off | QA / Project Team |
+
+### 5.2 Test Execution Sequence
+
+The planned execution sequence is:
+
+1. Complete unit testing of the individual modules.
+2. Perform integration testing between dependent modules.
+3. Execute the functional system test cases defined in Section 4.
+4. Execute performance, usability, accessibility, and error-handling tests.
+5. Execute all security test cases.
+6. Perform regression testing after fixing identified defects.
+7. Conduct User Acceptance Testing using the acceptance suites defined in the SRS.
+8. Verify the Requirements Traceability Matrix (RTM).
+9. Review unresolved defects and confirm that the exit criteria have been satisfied.
+10. Obtain final testing approval.
+
+### 5.3 Testing Roles and Responsibilities
+
+| Role | Responsibilities |
+|---|---|
+| Developers | Perform unit testing, fix defects, support integration testing, and provide builds for system testing. |
+| QA Engineers | Prepare and execute test cases, record results, report defects, perform regression testing, and verify fixes. |
+| System Architect | Support integration and system-level verification of the architecture, module interactions, and interfaces. |
+| Student Representative | Validate Student workflows during UAT, including login, exam access, exam taking, submission, and result viewing. |
+| Teacher Representative | Validate Teacher workflows including question management, exam creation, grading, and result release. |
+| Admin Representative | Validate Admin workflows including user management and dashboard functionality. |
+| Project Team | Coordinate testing activities, review defects, maintain traceability, and confirm final test completion. |
+| Instructor / Evaluator | Review the system and provide final evaluation and acceptance where applicable. |
+
+### 5.4 Test Completion Criteria
+
+Testing will be considered complete when:
+
+- All planned test cases have been executed.
+- All functional requirements have corresponding test coverage.
+- All security requirements have been tested.
+- Required non-functional requirements have been tested.
+- Critical defects have been resolved.
+- Regression testing has been completed after major defect fixes.
+- UAT acceptance criteria have been evaluated.
+- The RTM has been reviewed and updated with the corresponding test case IDs.
+- No unresolved critical P1 defects remain.
+- Final testing results have been reviewed and approved by the project team.
+
+
+
+## 6. Risks and Mitigations
+
+The following risks may affect the testing and verification of the Online Exam Portal. Appropriate mitigation and contingency measures are defined to reduce their impact.
+
+| Risk ID | Risk | Impact | Mitigation |
+|---|---|---|---|
+| R-01 | Server failure or downtime during testing | High | Maintain a stable test environment, monitor server health, and repeat affected tests after service restoration. |
+| R-02 | Database failure or data corruption | High | Use test data and database backups, verify database integrity after testing, and avoid using real user data. |
+| R-03 | Network interruption during an active exam | High | Test auto-save and reconnection behavior to ensure previously saved answers are restored and the exam timer remains server-controlled. |
+| R-04 | Incorrect timer or exam access-window behavior | High | Perform boundary testing around exam start time, end time, and timer expiration using server-authoritative time. |
+| R-05 | High concurrent user load causes performance degradation | High | Perform load testing with up to 100 concurrent active exam sessions and monitor response times and data integrity. |
+| R-06 | Security vulnerabilities in authentication or input handling | High | Execute security tests covering HTTPS/TLS, password hashing, JWT invalidation, input validation, SQL injection, XSS, and CSRF protection. |
+| R-07 | Defects introduced during bug fixes | Medium | Perform regression testing on affected functionality after major defect fixes. |
+| R-08 | Incomplete or inconsistent test data | Medium | Prepare controlled test datasets covering Student, Teacher, and Admin roles, different question types, exams, and security scenarios. |
+| R-09 | Accessibility issues remain undetected | Medium | Combine automated accessibility audits with manual keyboard navigation, contrast, and interface checks. |
+| R-10 | Test environment differs from the deployment environment | Medium | Keep the testing software stack aligned with the defined system architecture and document significant environment differences. |
+| R-11 | Email service failure affects authentication testing | Medium | Use a controlled test email configuration and verify email-dependent functionality separately when the external email service is unavailable. |
+| R-12 | Requirements are not fully traced to test cases | Medium | Review the RTM before final sign-off and verify that each applicable requirement has corresponding test coverage or the documented monitoring approach. |
+
+### 6.1 Risk Handling
+
+When a testing risk occurs, the project team will:
+
+1. Record the affected test, requirement, and observed issue.
+2. Determine the impact on system functionality or test validity.
+3. Apply the corresponding mitigation or recovery action.
+4. Repeat the affected test after the issue has been resolved.
+5. Perform regression testing where the correction may affect related functionality.
+6. Update the test results and RTM when necessary.
+7. Escalate unresolved high-impact risks to the project team and instructor/evaluator before final acceptance.
+
+## 7. Requirements Traceability Matrix (RTM)
+
+The Requirements Traceability Matrix establishes a direct relationship between the requirements defined in the SRS and the test cases defined in this STP. It ensures that all applicable functional, non-functional, and security requirements are verified through planned testing activities.
+
+| Requirement ID | Requirement Description | Priority | Source | Test Case |
+|---|---|---|---|---|
+| OEP-F-001 | Users can register using email and password. | High | SRS | TC-Auth-01 |
+| OEP-F-002 | Users can log in with valid credentials and receive a JWT containing their role. | High | SRS | TC-Auth-02 |
+| OEP-F-003 | Account locks after 5 consecutive failed attempts for 15 minutes and emails the user. | High | SRS | TC-Auth-03 |
+| OEP-F-004 | Role-based access control is enforced for Student, Teacher, and Admin. | High | SRS | TC-Auth-04 |
+| OEP-F-005 | Users can request a password reset link valid for 1 hour. | High | SRS | TC-Auth-05 |
+| OEP-F-006 | Teachers can create MCQ (single/multiple), True/False, and Short Answer questions. | High | SRS | TC-QB-01 |
+| OEP-F-007 | Questions support subject, topic, and difficulty tagging. | Medium | SRS | TC-QB-02 |
+| OEP-F-008 | Teachers can edit or delete questions not used in active/upcoming exams. | Medium | SRS | TC-QB-03 |
+| OEP-F-009 | Teachers can select questions, assign marks, and save an exam. | High | SRS | TC-Exam-01 |
+| OEP-F-010 | Teachers can configure duration, start/end datetime, and shuffle settings. | High | SRS | TC-Exam-02 |
+| OEP-F-011 | Teachers can publish exams; Students can access only after start time. | High | SRS | TC-Exam-03 |
+| OEP-F-012 | System displays countdown timer and auto-submits when time expires. | High | SRS | TC-Take-01 |
+| OEP-F-013 | Students cannot access exams before start time or after end time. | High | SRS | TC-Take-02 |
+| OEP-F-014 | Student answers are auto-saved every 60 seconds and restored on reconnect. | High | SRS | TC-Take-03 |
+| OEP-F-015 | System prevents duplicate exam submissions. | High | SRS | TC-Take-04 |
+| OEP-F-016 | System auto-grades MCQ/True-False immediately after submission. | High | SRS | TC-Grade-01 |
+| OEP-F-017 | Teachers can manually grade Short Answer within allowed range. | High | SRS | TC-Grade-02 |
+| OEP-F-018 | Students cannot see results until Teacher releases them. | High | SRS | TC-Grade-03 |
+| OEP-F-019 | Admin can create/deactivate/delete Student, Teacher, and Admin accounts. | High | SRS | TC-Admin-01 |
+| OEP-F-020 | Admin dashboard shows active exams, current Student count, and system health; updates within 30 seconds. | Medium | SRS | TC-Admin-02 |
+| OEP-NF-001 | 95th percentile response time ≤ 3 seconds under load. | High | SRS | TC-Perf-01 |
+| OEP-NF-002 | Monthly uptime ≥ 99.5%. | High | SRS | Ops monitoring |
+| OEP-NF-003 | Support 200 registered users and 100 concurrent active exam sessions without data integrity issues. | High | SRS | TC-Perf-02 |
+| OEP-NF-004 | User-facing errors do not expose stack traces, DB errors, or file paths. | Medium | SRS | TC-UX-01 |
+| OEP-NF-005 | WCAG 2.1 Level AA compliance including contrast, keyboard navigation, and ARIA. | Medium | SRS | TC-UX-02 |
+| OEP-SR-001 | All traffic uses HTTPS with TLS 1.2+; HTTP redirects to HTTPS. | High | SRS | TC-Sec-01 |
+| OEP-SR-002 | Passwords are stored as salted bcrypt hashes with minimum cost factor 10. | High | SRS | TC-Sec-02 |
+| OEP-SR-003 | JWT invalidation after logout; old token returns 401. | High | SRS | TC-Sec-03 |
+| OEP-SR-004 | Server-side validation against SQL injection and XSS. | High | SRS | TC-Sec-04 |
+| OEP-SR-005 | CSRF protection for all state-changing endpoints. | High | SRS | TC-Sec-05 |
