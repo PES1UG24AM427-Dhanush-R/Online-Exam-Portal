@@ -601,3 +601,545 @@ Verify that a Teacher can publish an exam and that the exam becomes visible and 
 **Pass/Fail Criteria:**
 - **Pass:** Publishing succeeds and Student visibility/access follows the configured start time.
 - **Fail:** Students can access the exam before its start time, or the published exam remains inaccessible after the start time.
+
+### 4.4 Exam Taking Test Cases
+
+#### TC-Take-01 — Countdown Timer and Auto-Submit
+
+**Requirement ID:** OEP-F-012
+
+**Test Objective:**  
+Verify that the Student is shown a countdown timer during an exam and that the exam is automatically submitted when the timer reaches zero using server-authoritative timing.
+
+**Preconditions:**
+1. A valid Student account exists.
+2. The Student is authenticated.
+3. A published exam is available within its configured access window.
+4. The exam has a configured duration.
+5. The Student has not previously attempted the exam.
+
+**Test Steps:**
+1. Log in as a Student.
+2. Open the available exam.
+3. Start the exam.
+4. Verify that the countdown timer is displayed.
+5. Answer one or more questions.
+6. Allow the exam timer to reach zero.
+7. Observe the system behavior when the timer expires.
+8. Verify the submission status and saved answers.
+
+**Expected Result:**
+- The countdown timer is visible throughout the exam.
+- The timer is synchronized with the server time.
+- When the server determines that the exam duration has expired, the exam is automatically submitted.
+- Answers entered before the timer expires are preserved.
+- The Student cannot submit additional answers after the exam has expired.
+
+**Pass/Fail Criteria:**
+- **Pass:** The server-authoritative timer reaches zero and automatically submits the exam with the answered questions preserved.
+- **Fail:** The timer is missing, relies incorrectly on client time, fails to auto-submit, or allows submission after expiration.
+
+---
+
+#### TC-Take-02 — Exam Access Window Enforcement
+
+**Requirement ID:** OEP-F-013
+
+**Test Objective:**  
+Verify that a Student cannot access an exam before its scheduled start time or after its scheduled end time.
+
+**Preconditions:**
+1. A valid Student account exists.
+2. The Student is authenticated.
+3. A published exam has a configured start and end datetime.
+
+**Test Steps:**
+1. Attempt to access the exam before its scheduled start time.
+2. Verify the response.
+3. Wait until the exam enters its configured access window.
+4. Attempt to start the exam.
+5. Verify that access is allowed.
+6. After the configured end time, attempt to access or continue the exam.
+7. Verify the response.
+
+**Expected Result:**
+- Access before the scheduled start time is denied.
+- Access during the configured window is allowed.
+- Access after the scheduled end time is denied.
+- The access-window validation is enforced by the server.
+
+**Pass/Fail Criteria:**
+- **Pass:** Access is correctly allowed only within the configured exam window.
+- **Fail:** A Student can access the exam before its start time or after its end time.
+
+---
+
+#### TC-Take-03 — Automatic Answer Saving and Restoration
+
+**Requirement ID:** OEP-F-014
+
+**Test Objective:**  
+Verify that a Student's answers are automatically saved every 60 seconds and restored when the Student reconnects to the ongoing exam.
+
+**Preconditions:**
+1. A valid Student account exists.
+2. The Student is authenticated.
+3. A published exam is available within its access window.
+4. The Student has started an exam attempt.
+5. The exam has sufficient remaining time for the reconnect test.
+
+**Test Steps:**
+1. Start the exam as a Student.
+2. Answer one or more questions.
+3. Keep the exam open until the 60-second auto-save interval is reached.
+4. Verify that the answers are saved.
+5. Close the browser or simulate a connection interruption.
+6. Reconnect to the portal while the exam is still within its allowed time window.
+7. Reopen the ongoing exam attempt.
+8. Check the previously answered questions.
+
+**Expected Result:**
+- Answers are automatically saved every 60 seconds.
+- Previously saved answers are restored when the Student reconnects.
+- The exam timer continues based on server time and is not reset by the reconnect.
+- The Student can continue the exam if the access window has not expired.
+
+**Pass/Fail Criteria:**
+- **Pass:** Saved answers are restored correctly and the timer is not reset after reconnecting.
+- **Fail:** Answers are lost, incorrect answers are restored, or the timer is reset.
+
+---
+
+#### TC-Take-04 — Duplicate Exam Submission Prevention
+
+**Requirement ID:** OEP-F-015
+
+**Test Objective:**  
+Verify that a Student cannot submit the same exam attempt more than once.
+
+**Preconditions:**
+1. A valid Student account exists.
+2. The Student is authenticated.
+3. A valid exam attempt exists.
+4. The exam has not yet been submitted.
+
+**Test Steps:**
+1. Open the ongoing exam attempt.
+2. Answer one or more questions.
+3. Submit the exam.
+4. Verify that the first submission succeeds.
+5. Attempt to submit the same exam attempt again.
+6. Verify the response.
+7. Check the attempt record.
+
+**Expected Result:**
+- The first submission is successfully recorded.
+- The attempt is marked as submitted.
+- The second submission attempt is rejected with an appropriate error, such as HTTP 409 Conflict.
+- The original submission remains preserved.
+
+**Pass/Fail Criteria:**
+- **Pass:** Only the first submission is accepted and subsequent submissions are rejected.
+- **Fail:** The Student can submit the same exam attempt more than once or the original submission is overwritten.
+
+### 4.5 Grading and Results Test Cases
+
+#### TC-Grade-01 — Automatic Grading for MCQ and True/False
+
+**Requirement ID:** OEP-F-016
+
+**Test Objective:**  
+Verify that the system automatically calculates the score for MCQ and True/False questions immediately after exam submission.
+
+**Preconditions:**
+1. A valid Student account exists.
+2. A valid Teacher account exists.
+3. An exam containing MCQ and True/False questions has been created.
+4. Correct answers and mark allocations are configured.
+5. The Student has an active exam attempt.
+
+**Test Steps:**
+1. Start the exam as a Student.
+2. Answer the MCQ questions with a mixture of correct and incorrect answers.
+3. Answer the True/False questions with a mixture of correct and incorrect answers.
+4. Submit the exam.
+5. Retrieve the generated score.
+6. Compare the calculated score with the configured answer key and mark allocation.
+
+**Expected Result:**
+- MCQ and True/False questions are automatically graded on submission.
+- Correct answers receive the appropriate marks.
+- Incorrect answers receive the appropriate score according to the configured grading logic.
+- The total automatically calculated score matches the expected score.
+
+**Pass/Fail Criteria:**
+- **Pass:** The automatically calculated score exactly matches the expected score based on the answer key and mark allocation.
+- **Fail:** Any objective question is graded incorrectly or the total score is incorrect.
+
+---
+
+#### TC-Grade-02 — Manual Grading of Short Answer
+
+**Requirement ID:** OEP-F-017
+
+**Test Objective:**  
+Verify that a Teacher can review a Student's Short Answer response, assign marks within the allowed range, and save the assigned score.
+
+**Preconditions:**
+1. A valid Teacher account exists.
+2. A submitted exam contains at least one Short Answer question.
+3. A Student has submitted the exam.
+4. The Teacher is authenticated.
+
+**Test Steps:**
+1. Log in as a Teacher.
+2. Open the grading interface.
+3. Select the submitted Student attempt.
+4. Open a Short Answer response.
+5. Review the Student's response.
+6. Enter a score within the allowed mark range.
+7. Save the score.
+8. Reopen the grading record.
+9. Verify the saved score.
+
+**Expected Result:**
+- The Teacher can view the Student's Short Answer response.
+- The Teacher can enter a valid score within the allowed range.
+- The score is saved successfully.
+- The saved score is displayed correctly when the grading record is reopened.
+
+**Pass/Fail Criteria:**
+- **Pass:** The Teacher can review, score, and save the Short Answer response correctly.
+- **Fail:** The response cannot be viewed, an invalid score is accepted, or the valid score is not saved correctly.
+
+---
+
+#### TC-Grade-03 — Result Release by Teacher
+
+**Requirement ID:** OEP-F-018
+
+**Test Objective:**  
+Verify that Students cannot view examination results until the Teacher explicitly releases them and can view the results after release.
+
+**Preconditions:**
+1. A valid Student account exists.
+2. A valid Teacher account exists.
+3. A submitted exam has been graded.
+4. The exam results have not yet been released.
+
+**Test Steps:**
+1. Log in as the Student.
+2. Open the results section.
+3. Verify that the score for the completed exam is not visible.
+4. Log in as the Teacher.
+5. Open the exam results.
+6. Mark the results as released.
+7. Log in as the Student again.
+8. Open the results section.
+
+**Expected Result:**
+- The Student cannot view the exam score before result release.
+- The Teacher can explicitly release the results.
+- After release, the Student can view the examination score on the Student dashboard.
+
+**Pass/Fail Criteria:**
+- **Pass:** Results remain hidden before Teacher release and become visible after release.
+- **Fail:** The Student can view results before release or cannot view them after the Teacher releases them.
+
+### 4.7 Non-Functional Requirement Test Cases
+
+#### TC-Perf-01 — Response Time Under Load
+
+**Requirement ID:** OEP-NF-001
+
+**Test Objective:**  
+Verify that the system maintains a 95th percentile response time of 3 seconds or less under the specified concurrent user load.
+
+**Preconditions:**
+1. The Online Exam Portal is deployed in the test environment.
+2. A representative test dataset is available.
+3. A load-testing tool is configured.
+4. The system is accessible to test users.
+
+**Test Steps:**
+1. Configure the load-testing tool to simulate 100 concurrent users.
+2. Execute representative operations such as login, exam access, question retrieval, answer submission, and result retrieval.
+3. Run the load test for the defined test period.
+4. Record the response times for the executed requests.
+5. Calculate the 95th percentile response time.
+6. Compare the measured response time against the 3-second requirement.
+
+**Expected Result:**
+- The system continues processing requests under the specified load.
+- The 95th percentile response time is 3 seconds or less.
+
+**Pass/Fail Criteria:**
+- **Pass:** The measured 95th percentile response time is ≤ 3 seconds.
+- **Fail:** The measured 95th percentile response time exceeds 3 seconds.
+
+---
+
+#### TC-Perf-02 — Concurrent Exam Session Handling
+
+**Requirement ID:** OEP-NF-003
+
+**Test Objective:**  
+Verify that the system supports up to 100 concurrent active exam sessions without data integrity issues or unacceptable performance degradation.
+
+**Preconditions:**
+1. The Online Exam Portal is deployed in the test environment.
+2. At least 200 registered test users are available.
+3. A published exam is available.
+4. A load-testing tool is configured.
+
+**Test Steps:**
+1. Configure the load-testing tool to simulate 100 Students taking the same or equivalent active exams concurrently.
+2. Start the exam sessions.
+3. Perform representative actions such as loading questions, saving answers, and submitting attempts.
+4. Monitor server response times and system behavior.
+5. Verify that all exam attempts are stored correctly.
+6. Verify that submitted answers are associated with the correct Student attempts.
+7. Check for failed submissions, duplicate attempts, or corrupted data.
+8. Compare observed performance against the response-time requirement in OEP-NF-001.
+
+**Expected Result:**
+- All 100 concurrent exam sessions can operate successfully.
+- Exam answers and submissions remain correctly associated with their respective Students.
+- No data corruption or integrity issues occur.
+- The system does not experience unacceptable performance degradation beyond the OEP-NF-001 threshold.
+
+**Pass/Fail Criteria:**
+- **Pass:** 100 concurrent active exam sessions are supported without data integrity issues and within the required performance threshold.
+- **Fail:** Exam data is corrupted/lost, submissions fail incorrectly, or performance exceeds the specified threshold.
+
+---
+
+#### TC-UX-01 — User-Facing Error Messages
+
+**Requirement ID:** OEP-NF-004
+
+**Test Objective:**  
+Verify that user-facing error messages do not expose stack traces, database errors, file paths, or other internal system information.
+
+**Preconditions:**
+1. The Online Exam Portal is deployed in the test environment.
+2. A valid test account is available.
+3. The system contains error-handling mechanisms for invalid requests.
+
+**Test Steps:**
+1. Submit invalid login credentials.
+2. Submit invalid or incomplete form data.
+3. Attempt to access an unauthorized resource.
+4. Send invalid data to a protected API endpoint.
+5. Trigger an invalid database-related request through the application interface.
+6. Observe the error messages returned by the application.
+7. Inspect the browser response and API response for exposed internal information.
+
+**Expected Result:**
+- Error messages are understandable to the user.
+- Stack traces are not displayed.
+- Database error messages are not exposed.
+- Server file paths are not exposed.
+- Internal implementation details are not revealed to the user.
+
+**Pass/Fail Criteria:**
+- **Pass:** All tested error conditions return safe, user-facing error messages without internal system details.
+- **Fail:** Any stack trace, database error, file path, or sensitive internal information is exposed.
+
+---
+
+#### TC-UX-02 — Accessibility Compliance
+
+**Requirement ID:** OEP-NF-005
+
+**Test Objective:**  
+Verify that the Online Exam Portal meets WCAG 2.1 Level AA accessibility requirements, including color contrast, keyboard navigation, and ARIA support.
+
+**Preconditions:**
+1. The Online Exam Portal is deployed in the test environment.
+2. The main Student, Teacher, and Admin interfaces are available.
+3. An accessibility auditing tool is available.
+4. A keyboard is available for manual accessibility testing.
+
+**Test Steps:**
+1. Run an automated accessibility audit on the main application pages.
+2. Check color contrast for text and user-interface elements.
+3. Navigate through the application using only the keyboard.
+4. Verify that interactive elements can be reached and operated using keyboard controls.
+5. Check that relevant form controls and interactive elements have appropriate accessible labels and ARIA attributes where required.
+6. Record accessibility violations.
+7. Verify that identified violations are addressed or documented.
+
+**Expected Result:**
+- The application satisfies WCAG 2.1 Level AA requirements within the defined scope.
+- Required color contrast is maintained.
+- Main functionality can be accessed using keyboard navigation.
+- Relevant interactive elements have appropriate accessibility labels and ARIA support.
+
+**Pass/Fail Criteria:**
+- **Pass:** No critical accessibility violations are identified and the tested interfaces satisfy the required WCAG 2.1 Level AA criteria.
+- **Fail:** Critical accessibility barriers remain or required keyboard, contrast, or ARIA support is missing.
+
+### 4.8 Security Test Cases
+
+#### TC-Sec-01 — HTTPS and TLS Security
+
+**Requirement ID:** OEP-SR-001
+
+**Test Objective:**  
+Verify that all application traffic is protected using HTTPS with TLS 1.2 or higher and that HTTP requests are redirected to HTTPS.
+
+**Preconditions:**
+1. The Online Exam Portal is deployed with HTTPS enabled.
+2. A valid test domain or deployment endpoint is available.
+3. A TLS/security scanning tool is available.
+
+**Test Steps:**
+1. Open the application using an HTTP URL.
+2. Observe the server response.
+3. Verify that the HTTP request is redirected to the HTTPS URL.
+4. Open the application using HTTPS.
+5. Run a TLS security scan against the application.
+6. Verify the supported TLS protocol versions.
+7. Verify that TLS 1.2 or higher is supported.
+
+**Expected Result:**
+- HTTP requests are redirected to HTTPS using HTTP 301.
+- Application communication occurs over HTTPS.
+- TLS 1.2 or higher is supported.
+- Insecure protocol versions are not used for application communication.
+
+**Pass/Fail Criteria:**
+- **Pass:** HTTP requests are redirected to HTTPS and the application supports TLS 1.2 or higher.
+- **Fail:** HTTP traffic remains accessible without redirection or an unsupported/insecure TLS configuration is detected.
+
+---
+
+#### TC-Sec-02 — Password Hashing
+
+**Requirement ID:** OEP-SR-002
+
+**Test Objective:**  
+Verify that user passwords are stored as salted bcrypt hashes and are not stored in plaintext.
+
+**Preconditions:**
+1. A valid test user account exists.
+2. Database access is available to the tester.
+3. The authentication system is operational.
+
+**Test Steps:**
+1. Register a test user or change the password of an existing test account.
+2. Inspect the corresponding user record in the database.
+3. Verify the stored password value.
+4. Verify that the stored value is a bcrypt hash.
+5. Verify that the bcrypt cost factor satisfies the minimum required value.
+6. Check that the plaintext password is not stored in the database or application logs.
+
+**Expected Result:**
+- Passwords are stored as salted bcrypt hashes.
+- The bcrypt cost factor is at least 10.
+- Plaintext passwords are not stored or exposed.
+
+**Pass/Fail Criteria:**
+- **Pass:** All tested passwords are stored securely using bcrypt with the required cost factor and no plaintext password is exposed.
+- **Fail:** A plaintext password is stored/exposed or the bcrypt cost factor is below the required minimum.
+
+---
+
+#### TC-Sec-03 — JWT Invalidation After Logout
+
+**Requirement ID:** OEP-SR-003
+
+**Test Objective:**  
+Verify that a JWT issued before logout cannot be used to access protected resources after the Student logs out.
+
+**Preconditions:**
+1. A valid Student account exists.
+2. The Student can successfully log in.
+3. A protected API endpoint is available.
+
+**Test Steps:**
+1. Log in as the Student.
+2. Capture the authenticated session token according to the implemented authentication mechanism.
+3. Access a protected resource using the valid authenticated session.
+4. Log out from the application.
+5. Attempt to access the same protected resource using the previously issued token/session.
+6. Observe the server response.
+
+**Expected Result:**
+- The authenticated request before logout is successful.
+- Logout invalidates the previous authentication session/token.
+- A request using the old token after logout is rejected with HTTP 401 Unauthorized.
+
+**Pass/Fail Criteria:**
+- **Pass:** The old authentication token/session cannot access protected resources after logout and returns HTTP 401.
+- **Fail:** The old token/session remains valid after logout.
+
+---
+
+#### TC-Sec-04 — Input Validation Against SQL Injection and XSS
+
+**Requirement ID:** OEP-SR-004
+
+**Test Objective:**  
+Verify that server-side input validation prevents malicious SQL injection and Cross-Site Scripting (XSS) inputs from being executed or causing unintended database/application behavior.
+
+**Preconditions:**
+1. The Online Exam Portal is deployed in the test environment.
+2. Test accounts with appropriate permissions are available.
+3. Input fields and API endpoints accepting user-controlled data are identified.
+
+**Test Steps:**
+1. Identify application fields that accept user input.
+2. Submit representative SQL injection payloads through applicable input fields and API parameters.
+3. Observe the application response and database behavior.
+4. Submit representative XSS payloads through applicable text fields.
+5. Retrieve and display the submitted data where applicable.
+6. Inspect the response for script execution or unsafe rendering.
+7. Verify that malicious input is rejected, safely handled, or encoded.
+8. Verify that no database records are improperly modified or exposed.
+
+**Expected Result:**
+- Malicious SQL input does not alter or expose unintended database data.
+- XSS payloads are not executed in the user's browser.
+- Server-side validation and safe input handling are applied.
+- No sensitive database or internal system information is exposed.
+
+**Pass/Fail Criteria:**
+- **Pass:** SQL injection and XSS attempts are safely rejected or handled without unauthorized execution, data access, or modification.
+- **Fail:** Malicious input is executed, causes unauthorized database access/modification, or results in XSS.
+
+---
+
+#### TC-Sec-05 — CSRF Protection
+
+**Requirement ID:** OEP-SR-005
+
+**Test Objective:**  
+Verify that state-changing requests are protected against Cross-Site Request Forgery (CSRF).
+
+**Preconditions:**
+1. The Online Exam Portal is deployed in the test environment.
+2. A valid authenticated user account exists.
+3. State-changing endpoints such as POST, PUT, or DELETE are available.
+4. A valid CSRF protection mechanism is implemented.
+
+**Test Steps:**
+1. Log in as an authenticated user.
+2. Identify a state-changing operation such as creating, editing, or deleting data.
+3. Send the request without the required CSRF token.
+4. Observe the server response.
+5. Send the request with an invalid CSRF token.
+6. Observe the server response.
+7. Send the request with a valid CSRF token.
+8. Verify the result.
+
+**Expected Result:**
+- Requests without a valid CSRF token are rejected.
+- Requests containing an invalid CSRF token are rejected with an appropriate error such as HTTP 403 Forbidden.
+- Requests containing a valid CSRF token are processed successfully.
+- CSRF protection is applied to applicable state-changing endpoints.
+
+**Pass/Fail Criteria:**
+- **Pass:** Unauthorized state-changing requests are blocked and valid requests with the correct CSRF protection are accepted.
+- **Fail:** A state-changing request can be completed without valid CSRF protection.
