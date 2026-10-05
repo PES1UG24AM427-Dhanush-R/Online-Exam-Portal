@@ -149,3 +149,69 @@ UAT will use the acceptance test suites defined in the SRS:
 | Accessibility Suite | OEP-NF-005 |
 
 The system will be considered ready for acceptance when the SRS exit criteria are satisfied, including verification of all high-priority functional requirements, high-priority non-functional requirements, all security requirements, 100% execution of planned test cases with no critical (P1) defects open, and UAT sign-off from the course coordinator or product owner.
+
+
+## 3. Test Environment
+
+The test environment will provide the hardware, software, database, network, and test data required to execute the functional, non-functional, and security test cases for the Online Exam Portal.
+
+### 3.1 Hardware Requirements
+
+The following hardware will be used for testing:
+
+- Client computers or laptops for Student, Teacher, and Admin testing.
+- A Linux-based server environment for hosting the backend application.
+- Sufficient CPU and memory resources to perform concurrent-user and performance testing.
+- Stable network connectivity for testing normal operation, reconnect scenarios, and HTTPS communication.
+- Standard keyboard, mouse, and display for UI and accessibility testing.
+
+The test environment must support testing of up to 100 concurrent active exam sessions as required by OEP-NF-003.
+
+### 3.2 Software Requirements
+
+| Component | Test Environment |
+|---|---|
+| Frontend | HTML5 / CSS3 / JavaScript or React |
+| Backend | Node.js with Express.js |
+| Database | MySQL |
+| Authentication | JWT + bcrypt |
+| Email Service | Nodemailer (SMTP) or SendGrid API |
+| Communication | HTTPS / TLS 1.2+ |
+| Operating Environment | Linux-based server |
+| Client | Modern web browser such as Chrome, Firefox, Edge, or Safari |
+| Version Control | Git / GitHub |
+
+The test environment will use the same core technologies defined in the SRS and SAD to ensure that test results represent the intended application environment. :chatgpt-content-reference{index="0"}
+
+### 3.3 Testing Tools
+
+The following tools and methods will be used where applicable:
+
+| Tool / Method | Purpose |
+|---|---|
+| Postman | API testing for REST endpoints |
+| MySQL / MySQL Workbench | Database inspection and verification |
+| Browser Developer Tools | UI, network, and client-side verification |
+| Accessibility audit tools | Verification of WCAG 2.1 Level AA requirements |
+| Load testing tools | Performance and concurrent-user testing |
+| TLS scanning tools | Verification of HTTPS and TLS 1.2+ enforcement |
+| Git / GitHub | Test documentation and version control |
+
+Postman and MySQL Workbench are also identified in the SAD as project tools. :chatgpt-content-reference{index="1"}
+
+### 3.4 Test Data
+
+Test data will be prepared for each system role and testing category.
+
+| Role / Category | Test Data |
+|---|---|
+| Student | Valid and invalid registration details, login credentials, exam attempts, answers, and submission data |
+| Teacher | Questions of all four supported types, question tags, exam configurations, mark allocations, and Short Answer responses |
+| Admin | Student, Teacher, and Admin accounts for creation, deactivation, deletion, and role-management testing |
+| Authentication | Valid credentials, invalid credentials, repeated failed login attempts, and password-reset requests |
+| Exam | Exams with different durations, start/end times, shuffle settings, questions, and mark allocations |
+| Performance | Data required to simulate 100 concurrent users and 100 concurrent active exam sessions |
+| Security | Invalid input, SQL injection strings, XSS payloads, invalid JWTs, and invalid/missing CSRF tokens |
+| Accessibility | Portal pages, forms, navigation controls, buttons, and interactive elements for keyboard and screen-reader testing |
+
+Test data containing real user passwords or other sensitive information will not be used. Passwords used during testing will be test credentials and must follow the same security controls as production data.
