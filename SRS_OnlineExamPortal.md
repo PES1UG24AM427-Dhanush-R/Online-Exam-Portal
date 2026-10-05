@@ -327,25 +327,37 @@ The system is considered ready for acceptance when all of the following are sati
 
 ## 7. UML Use-Case Diagrams
 
-> Note: Diagrams are to be created using PlantUML or draw.io and embedded here. Descriptions below define the actors and use cases for each diagram.
+> Note: Diagrams are created using PlantUML and embedded here. Descriptions below define the actors, use cases, and relationships for each diagram.
+>
+> **UML Note on System Actor:** The Online Exam Portal itself is the system boundary (represented as the enclosing rectangle in each diagram). Therefore "System" is NOT modelled as a separate actor. Actors are only external entities that interact with the system — Student, Teacher, and Admin.
 
 ---
 
 ### 7.1 Use-Case Diagram 1 — Student Exam Flow
 
-**Actors:** Student, System
+**Actor:** Student
+
+**System Boundary:** Online Exam Portal
 
 **Use Cases:**
 - Register Account
 - Login
+- Reset Password
 - View Exam Schedule
 - Start Exam
-- Answer Questions (extends: Auto-Save Answers)
-- Submit Exam (includes: Timer Auto-Submit)
-- View Results (extends: Download Result PDF)
-- Reset Password
+- Answer Questions
+- Auto-Save Answers
+- Submit Exam
+- Timer Auto-Submit
+- View Results
+- Download Result PDF *(Future / v1.1 — not implemented in v1.0)*
 
-**Description:** This diagram covers the complete lifecycle of a Student's interaction with the portal — from registration through to viewing their results. The auto-save and timer auto-submit behaviors are shown as extension/inclusion relationships to the core exam-taking use case.
+**UML Relationships:**
+- **Answer Questions `<<include>>` Auto-Save Answers** — Auto-saving answers is mandatory functionality that occurs every 60 seconds during any active exam attempt (OEP-F-014). It is always triggered as part of answering questions and is therefore modelled as `<<include>>`.
+- **Timer Auto-Submit `<<extend>>` Submit Exam** — Timer Auto-Submit is a conditional behaviour that only occurs when the countdown timer reaches zero. The extension relationship points from the extending use case (Timer Auto-Submit) to the base use case (Submit Exam), indicating it extends the base under that specific condition (OEP-F-012).
+- **Download Result PDF `<<extend>>` View Results** — Downloading a result PDF is an optional extension of viewing results. This feature is **not implemented in v1.0**; the endpoint is reserved for v1.1. It is retained in the diagram for traceability but is clearly marked as future functionality.
+
+**Description:** This diagram covers the complete lifecycle of a Student's interaction with the portal — from registration through to viewing results. Use cases are grouped by concern: authentication (Register Account, Login, Reset Password), exam access (View Exam Schedule, Start Exam), exam taking (Answer Questions, Auto-Save Answers, Submit Exam, Timer Auto-Submit), and results (View Results, Download Result PDF).
 
 ![Use-Case Diagram 1 — Student Exam Flow](usecase_diagram_1.png)
 
@@ -353,7 +365,9 @@ The system is considered ready for acceptance when all of the following are sati
 
 ### 7.2 Use-Case Diagram 2 — Teacher & Admin Management Flow
 
-**Actors:** Teacher, Admin, System
+**Actors:** Teacher, Admin
+
+**System Boundary:** Online Exam Portal
 
 **Use Cases (Teacher):**
 - Login
@@ -373,7 +387,11 @@ The system is considered ready for acceptance when all of the following are sati
 - Monitor Active Exams
 - View System Health Dashboard
 
-**Description:** This diagram covers the management side of the portal. It shows the two privileged roles and their distinct capabilities. The Admin has a separate set of use cases that overlap with user management and system monitoring, while the Teacher focuses on academic content and evaluation.
+**UML Relationships:**
+- **Create Exam `<<include>>` Configure Exam Settings** — Configuring exam settings (duration, time window, shuffle) is a required step that always occurs as part of creating an exam (OEP-F-009, OEP-F-010). It is therefore modelled as `<<include>>`.
+- Teacher is associated only with Teacher use cases. Admin is associated only with Admin use cases. No cross-role associations are present.
+
+**Description:** This diagram covers the management side of the portal. Teacher and Admin are shown as separate actors with distinct, non-overlapping use cases. The Teacher focuses on academic content creation and evaluation; the Admin focuses on user management and system oversight. Teacher is positioned on the left, Admin on the right, with their respective use cases grouped to minimise line crossings.
 
 ![Use-Case Diagram 2 — Teacher & Admin Management Flow](usecase_diagram_2.png)
 
@@ -388,7 +406,7 @@ The system is considered ready for acceptance when all of the following are sati
 | OEP-F-001 | Student registration | 4.1 | AuthModule | TC-Auth-01 | N | |
 | OEP-F-002 | User login & JWT issuance | 4.1 | AuthModule | TC-Auth-02 | N | |
 | OEP-F-003 | Account lockout after 5 failed attempts | 4.1 | AuthModule | TC-Auth-03 | N | |
-| OEP-F-004 | Role-based access control enforcement | 4.1 | AuthModule / API Gateway | TC-Auth-04 | N | |
+| OEP-F-004 | Role-based access control enforcement | 4.1 | AuthModule | TC-Auth-04 | N | |
 | OEP-F-005 | Password reset via email link | 4.1 | AuthModule | TC-Auth-05 | N | |
 | OEP-F-006 | Question creation (4 types) | 4.2 | QuestionBankModule | TC-QB-01 | N | |
 | OEP-F-007 | Question tagging by subject/topic/difficulty | 4.2 | QuestionBankModule | TC-QB-02 | N | |
@@ -410,8 +428,8 @@ The system is considered ready for acceptance when all of the following are sati
 | OEP-NF-003 | 100 concurrent exam sessions | 5 | All | TC-Perf-02 | N | |
 | OEP-NF-004 | Safe user-facing error messages | 5 | All | TC-UX-01 | N | |
 | OEP-NF-005 | WCAG 2.1 AA accessibility | 5 | UI | TC-UX-02 | N | |
-| OEP-SR-001 | HTTPS / TLS 1.2+ enforcement | 5.1.2 | API Gateway | TC-Sec-01 | N | |
+| OEP-SR-001 | HTTPS / TLS 1.2+ enforcement | 5.1.2 | Express Middleware (all modules) | TC-Sec-01 | N | |
 | OEP-SR-002 | Password hashing (bcrypt) | 5.1.2 | AuthModule | TC-Sec-02 | N | |
 | OEP-SR-003 | JWT invalidation on logout | 5.1.2 | AuthModule | TC-Sec-03 | N | |
 | OEP-SR-004 | Input validation / injection prevention | 5.1.2 | All | TC-Sec-04 | N | |
-| OEP-SR-005 | CSRF protection on state-changing endpoints | 5.1.2 | API Gateway | TC-Sec-05 | N | |
+| OEP-SR-005 | CSRF protection on state-changing endpoints | 5.1.2 | Express Middleware (all modules) | TC-Sec-05 | N | |

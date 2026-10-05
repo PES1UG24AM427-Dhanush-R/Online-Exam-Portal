@@ -144,35 +144,42 @@ Readers implementing a specific module should read Section 3.4 (Component Descri
 **Component diagram description (for reference):**
 
 The system is structured as a three-tier architecture:
-- **Client Tier:** Web Browser running the React/HTML frontend
-- **Application Tier:** Node.js/Express backend exposing REST APIs, divided into six modules
-- **Data Tier:** MySQL relational database storing all persistent data
 
-The six backend modules are:
-- **AuthModule** — handles registration, login, JWT issuance, RBAC enforcement, lockout, password reset
-- **QuestionBankModule** — handles question CRUD operations, tagging, and search
-- **ExamModule** — handles exam creation, configuration, scheduling, and publishing
-- **ExamTakingModule** — handles exam access control, timer, auto-save, and submission
-- **GradingModule** — handles auto-grading, manual grading interface, and result release
-- **AdminModule** — handles user management and admin dashboard
+**Client / Presentation Tier:**
+- **Web Browser** (`<<component>>`) — Renders the HTML/CSS/JavaScript (or React) UI for all three user roles: Student, Teacher, and Admin. Student, Teacher, and Admin are external users who interact with the system through the Web Browser; they are actors, not software components.
 
-All modules communicate with the shared **Database** layer. The **AuthModule** also interfaces with an **Email Service** for password reset and notifications.
+**Application / Business Logic Tier:**
+- Six backend modules, each implemented as an Express.js router within the Node.js server, exposed over REST API / HTTPS:
+  - **AuthModule** (`<<component>>`) — registration, login, JWT issuance, RBAC enforcement via Express middleware, account lockout, password reset
+  - **QuestionBankModule** (`<<component>>`) — question CRUD operations, tagging, and search
+  - **ExamModule** (`<<component>>`) — exam creation, configuration, scheduling, and publishing
+  - **ExamTakingModule** (`<<component>>`) — exam access control, server-authoritative timer, auto-save, and submission
+  - **GradingModule** (`<<component>>`) — auto-grading for MCQ/True-False, manual grading interface, result release
+  - **AdminModule** (`<<component>>`) — user management, role assignment, active exam monitoring, system health dashboard
+
+The Web Browser communicates with all six backend modules via **REST API / HTTPS**. There is no separate API Gateway component — HTTPS enforcement, JWT validation, RBAC checks, and input validation are all handled by Express middleware within the application tier.
+
+**Data / External Services Tier:**
+- **MySQL Database** (`<<database>>`) — persistent storage for all data; accessed by all six backend modules via parameterized SQL queries over the internal network only; never exposed directly to the client
+- **Email Service** (`<<external service>>`) — sends transactional emails (password reset links, exam notifications); accessed exclusively by AuthModule via SMTP or third-party email API (e.g., Nodemailer / SendGrid)
 
 ---
 
 ### 3.4 Component Descriptions
 
+> **Note on actors vs. components:** Student, Teacher, and Admin are external users (actors) who interact with the system through the Web Browser. They are not software components and do not appear in the component diagram as components.
+
 | Component | Responsibility | Key Interfaces |
 |---|---|---|
-| **Web Browser (Client)** | Renders the UI for all three roles. Sends HTTP requests to the backend REST API. Stores JWT in memory or secure cookie. | REST API over HTTPS |
-| **AuthModule** | Handles user registration, login, JWT generation and validation, RBAC middleware, account lockout, and password reset. Every incoming API request passes through AuthModule's RBAC middleware before reaching any other module. | `/api/auth/*` endpoints; Email Service |
-| **QuestionBankModule** | Manages the full lifecycle of questions — creation, editing, deletion, tagging by subject/topic/difficulty, and retrieval for exam composition. | `/api/questions/*` endpoints; Database |
-| **ExamModule** | Allows Teachers to create exams by selecting questions, configure settings (duration, window, shuffle), and publish them. Manages exam state transitions (draft → published → closed). | `/api/exams/*` endpoints; Database |
-| **ExamTakingModule** | Controls student access to exams (enforces time window), serves questions during an exam, handles auto-save every 60 seconds, and processes final submission. Timer is server-authoritative. | `/api/attempt/*` endpoints; Database |
-| **GradingModule** | Automatically scores MCQ and True/False questions on submission. Provides a manual grading interface for Short Answer questions. Controls result publication. | `/api/grading/*` endpoints; Database |
-| **AdminModule** | Provides Admin-only endpoints for user CRUD, role assignment, active exam monitoring, and system health indicators. | `/api/admin/*` endpoints; Database |
-| **Database (MySQL)** | Persistent storage for all data: users, roles, questions, exams, attempts, answers, scores, audit logs. | SQL over internal network only — never directly exposed to client |
-| **Email Service** | Sends transactional emails: password reset links, exam schedule notifications, result release alerts. | SMTP or third-party email API (e.g., SendGrid) |
+| **Web Browser (Client)** | Renders the UI for all three roles (Student, Teacher, Admin). Sends HTTP requests to the backend REST API. Stores the JWT session token in a secure **HttpOnly cookie** to prevent XSS-based token theft (OEP-SR-004). | REST API over HTTPS |
+| **AuthModule** | Handles user registration, login, JWT generation and validation, RBAC middleware (applied to all protected routes), account lockout, and password reset. HTTPS enforcement, JWT validation, RBAC role checks, and input validation are applied as Express middleware — there is no separate API Gateway component. | `/api/auth/*` endpoints; Email Service |
+| **QuestionBankModule** | Manages the full lifecycle of questions — creation, editing, deletion, tagging by subject/topic/difficulty, and retrieval for exam composition. | `/api/questions/*` endpoints; MySQL Database |
+| **ExamModule** | Allows Teachers to create exams by selecting questions, configure settings (duration, window, shuffle), and publish them. Manages exam state transitions (draft → published → closed). | `/api/exams/*` endpoints; MySQL Database |
+| **ExamTakingModule** | Controls Student access to exams (enforces time window), serves questions during an exam, handles auto-save every 60 seconds, and processes final submission. Timer is server-authoritative. | `/api/attempt/*` endpoints; MySQL Database |
+| **GradingModule** | Automatically scores MCQ and True/False questions on submission. Provides a manual grading interface for Short Answer questions. Controls result publication. | `/api/grading/*` endpoints; MySQL Database |
+| **AdminModule** | Provides Admin-only endpoints for user CRUD, role assignment, active exam monitoring, and system health indicators. | `/api/admin/*` endpoints; MySQL Database |
+| **MySQL Database** | Persistent storage for all data: users, roles, questions, exams, attempts, answers, scores, audit logs. Accessed via parameterized queries only — never directly exposed to the client tier. | SQL over internal network |
+| **Email Service** | Sends transactional emails: password reset links, exam schedule notifications, result release alerts. Accessed exclusively by AuthModule. | SMTP or third-party email API (e.g., Nodemailer / SendGrid) |
 
 ---
 
@@ -269,11 +276,11 @@ Rationale: JWTs allow the backend to validate identity without a database lookup
 | OEP-F-020 | Admin active exam dashboard | AdminModule — `/api/admin/dashboard` GET |
 | OEP-NF-001 | Response time ≤ 3s | Database indexing, efficient queries, connection pooling |
 | OEP-NF-003 | 100 concurrent exam sessions | Stateless JWT auth + connection pool sized for concurrency |
-| OEP-SR-001 | HTTPS / TLS 1.2+ | Web server (Nginx) configured to enforce HTTPS, redirect HTTP |
+| OEP-SR-001 | HTTPS / TLS 1.2+ | Express middleware (all modules) — enforces HTTPS, redirects HTTP |
 | OEP-SR-002 | Password hashing (bcrypt) | AuthModule — bcrypt with cost factor 12 |
 | OEP-SR-003 | JWT invalidation on logout | AuthModule — token denylist in database |
 | OEP-SR-004 | Input validation / injection prevention | All modules — express-validator middleware + parameterized queries |
-| OEP-SR-005 | CSRF protection | API Gateway — CSRF token middleware on all POST/PUT/DELETE routes |
+| OEP-SR-005 | CSRF protection | Express middleware (all modules) — CSRF token middleware on all POST/PUT/DELETE routes |
 
 ---
 
