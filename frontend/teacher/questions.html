@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Question Bank — Online Exam Portal</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f0f4f8; color: #1a202c; }
+    header { background: #276749; color: #fff; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { font-size: 1.2rem; }
+    .back-btn { background: transparent; border: 1px solid #fff; color: #fff; padding: 0.4rem 0.9rem; border-radius: 5px; cursor: pointer; font-size: 0.9rem; text-decoration: none; }
+    main { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; display: grid; grid-template-columns: 380px 1fr; gap: 1.5rem; }
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 1.5rem; }
+    h2 { font-size: 1.1rem; margin-bottom: 1.25rem; color: #2d3748; }
+    label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.3rem; margin-top: 0.75rem; }
+    input, select, textarea { width: 100%; padding: 0.55rem 0.75rem; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 0.9rem; }
+    input:focus, select:focus, textarea:focus { outline: 2px solid #4299e1; }
+    textarea { resize: vertical; min-height: 80px; }
+    .options-area { margin-top: 0.5rem; }
+    .option-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
+    .option-row input[type=text] { flex: 1; }
+    .option-row input[type=radio], .option-row input[type=checkbox] { width: auto; accent-color: #3182ce; }
+    .btn { padding: 0.6rem 1.1rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 600; }
+    .btn-green  { background: #276749; color: #fff; width: 100%; margin-top: 1rem; }
+    .btn-blue   { background: #3182ce; color: #fff; }
+    .btn-red    { background: #fed7d7; color: #c53030; }
+    .btn-sm     { padding: 0.3rem 0.65rem; font-size: 0.8rem; }
+    .btn:hover  { opacity: 0.88; }
+    .btn:focus  { outline: 2px solid #2b6cb0; outline-offset: 2px; }
+    .filters    { display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .filters select, .filters input { flex: 1; min-width: 120px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th, td { text-align: left; padding: 0.55rem 0.7rem; border-bottom: 1px solid #e2e8f0; }
+    th { background: #edf2f7; font-weight: 600; }
+    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.75rem; font-weight: 600; }
+    .badge-easy   { background: #c6f6d5; color: #276749; }
+    .badge-medium { background: #fefcbf; color: #744210; }
+    .badge-hard   { background: #fed7d7; color: #c53030; }
+    .success-msg { color: #276749; background: #c6f6d5; padding: 0.6rem 0.75rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.75rem; display: none; }
+    .error-msg   { color: #c53030; background: #fff5f5; padding: 0.6rem 0.75rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.75rem; display: none; }
+    .empty { color: #a0aec0; text-align: center; padding: 1.5rem 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Question Bank</h1>
+    <a href="/teacher/dashboard.html" class="back-btn" aria-label="Back to dashboard">← Dashboard</a>
+  </header>
+
+  <main>
+    <!-- Create Question Form -->
+    <section class="card" aria-labelledby="create-heading">
+      <h2 id="create-heading">Add Question</h2>
+      <div id="form-success" class="success-msg" role="status" aria-live="polite"></div>
+      <div id="form-error"   class="error-msg"   role="alert"  aria-live="polite"></div>
+
+      <form id="question-form" novalidate>
+        <label for="q-type">Question Type</label>
+        <select id="q-type" aria-required="true">
+          <option value="MCQ_single">MCQ — Single correct</option>
+          <option value="MCQ_multiple">MCQ — Multiple correct</option>
+          <option value="TrueFalse">True / False</option>
+          <option value="ShortAnswer">Short Answer</option>
+        </select>
+
+        <label for="q-text">Question Text</label>
+        <textarea id="q-text" aria-required="true" placeholder="Enter the question..."></textarea>
+
+        <div id="options-container" class="options-area">
+          <label>Answer Options <small>(tick the correct answer)</small></label>
+          <div id="options-list"></div>
+          <button type="button" class="btn btn-blue btn-sm" id="add-option-btn" aria-label="Add option" style="margin-top:0.4rem">+ Add Option</button>
+        </div>
+
+        <label for="q-subject">Subject</label>
+        <input type="text" id="q-subject" aria-required="true" placeholder="e.g. Mathematics" />
+
+        <label for="q-topic">Topic</label>
+        <input type="text" id="q-topic" aria-required="true" placeholder="e.g. Algebra" />
+
+        <label for="q-difficulty">Difficulty</label>
+        <select id="q-difficulty" aria-required="true">
+          <option value="Easy">Easy</option>
+          <option value="Medium">Medium</option>
+          <option value="Hard">Hard</option>
+        </select>
+
+        <button type="submit" class="btn btn-green" aria-label="Save question">Save Question</button>
+      </form>
+    </section>
+
+    <!-- Question List -->
+    <section class="card" aria-labelledby="list-heading">
+      <h2 id="list-heading">My Questions</h2>
+      <div class="filters">
+        <input type="text" id="filter-subject" placeholder="Filter by subject" aria-label="Filter by subject" />
+        <select id="filter-difficulty" aria-label="Filter by difficulty">
+          <option value="">All Difficulties</option>
+          <option value="Easy">Easy</option>
+          <option value="Medium">Medium</option>
+          <option value="Hard">Hard</option>
+        </select>
+        <select id="filter-type" aria-label="Filter by type">
+          <option value="">All Types</option>
+          <option value="MCQ_single">MCQ Single</option>
+          <option value="MCQ_multiple">MCQ Multiple</option>
+          <option value="TrueFalse">True/False</option>
+          <option value="ShortAnswer">Short Answer</option>
+        </select>
+      </div>
+      <table aria-label="Questions list">
+        <thead><tr><th>Text</th><th>Type</th><th>Subject</th><th>Difficulty</th><th>Actions</th></tr></thead>
+        <tbody id="questions-tbody"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    async function getCsrfToken() {
+      const res = await fetch('/api/auth/csrf-token', { credentials: 'include' });
+      return (await res.json()).csrfToken;
+    }
+
+    // ── Build options UI based on question type ────────────────────────────
+    const typeSelect = document.getElementById('q-type');
+    const optionsContainer = document.getElementById('options-container');
+    const optionsList = document.getElementById('options-list');
+    const addOptionBtn = document.getElementById('add-option-btn');
+
+    function buildOptionsUI() {
+      const type = typeSelect.value;
+      optionsList.innerHTML = '';
+
+      if (type === 'TrueFalse') {
+        optionsContainer.style.display = 'block';
+        addOptionBtn.style.display = 'none';
+        ['True', 'False'].forEach(val => {
+          optionsList.innerHTML += `
+            <div class="option-row">
+              <input type="radio" name="correct" value="${val}" aria-label="Correct answer: ${val}" />
+              <input type="text" value="${val}" readonly aria-label="Option ${val}" />
+            </div>`;
+        });
+      } else if (type === 'MCQ_single') {
+        optionsContainer.style.display = 'block';
+        addOptionBtn.style.display = 'inline-block';
+        addOption('radio');
+        addOption('radio');
+      } else if (type === 'MCQ_multiple') {
+        optionsContainer.style.display = 'block';
+        addOptionBtn.style.display = 'inline-block';
+        addOption('checkbox');
+        addOption('checkbox');
+      } else {
+        optionsContainer.style.display = 'none';
+      }
+    }
+
+    function addOption(inputType) {
+      const row = document.createElement('div');
+      row.className = 'option-row';
+      row.innerHTML = `
+        <input type="${inputType}" name="correct" aria-label="Mark as correct answer" />
+        <input type="text" placeholder="Option text" aria-label="Option text" />
+        <button type="button" class="btn btn-red btn-sm" aria-label="Remove option" onclick="this.parentElement.remove()">✕</button>`;
+      optionsList.appendChild(row);
+    }
+
+    addOptionBtn.addEventListener('click', () => {
+      const type = typeSelect.value === 'MCQ_multiple' ? 'checkbox' : 'radio';
+      addOption(type);
+    });
+    typeSelect.addEventListener('change', buildOptionsUI);
+    buildOptionsUI();
+
+    // ── Submit form ────────────────────────────────────────────────────────
+    document.getElementById('question-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const successMsg = document.getElementById('form-success');
+      const errorMsg   = document.getElementById('form-error');
+      successMsg.style.display = 'none';
+      errorMsg.style.display   = 'none';
+
+      const type = typeSelect.value;
+      const text = document.getElementById('q-text').value.trim();
+      const subject    = document.getElementById('q-subject').value.trim();
+      const topic      = document.getElementById('q-topic').value.trim();
+      const difficulty = document.getElementById('q-difficulty').value;
+
+      let options = null, correctAnswer = null;
+
+      if (type === 'TrueFalse' || type === 'MCQ_single') {
+        const rows = optionsList.querySelectorAll('.option-row');
+        options = [...rows].map(r => r.querySelector('input[type=text]').value.trim());
+        const checked = optionsList.querySelector('input[type=radio]:checked');
+        if (!checked) { errorMsg.textContent = 'Please select the correct answer.'; errorMsg.style.display = 'block'; return; }
+        correctAnswer = checked.value || checked.closest('.option-row').querySelector('input[type=text]').value.trim();
+      } else if (type === 'MCQ_multiple') {
+        const rows = optionsList.querySelectorAll('.option-row');
+        options = [...rows].map(r => r.querySelector('input[type=text]').value.trim());
+        const checked = [...optionsList.querySelectorAll('input[type=checkbox]:checked')];
+        if (!checked.length) { errorMsg.textContent = 'Please select at least one correct answer.'; errorMsg.style.display = 'block'; return; }
+        correctAnswer = checked.map(c => c.closest('.option-row').querySelector('input[type=text]').value.trim());
+      } else {
+        correctAnswer = '';
+      }
+
+      try {
+        const csrfToken = await getCsrfToken();
+        const res = await fetch('/api/questions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          credentials: 'include',
+          body: JSON.stringify({ type, text, options, correctAnswer, subject, topic, difficulty }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          errorMsg.textContent = data.error?.details?.map(d => d.message).join(' ') || data.error?.message;
+          errorMsg.style.display = 'block';
+          return;
+        }
+        successMsg.textContent = 'Question saved successfully.';
+        successMsg.style.display = 'block';
+        document.getElementById('question-form').reset();
+        buildOptionsUI();
+        loadQuestions();
+      } catch {
+        errorMsg.textContent = 'Failed to save question.';
+        errorMsg.style.display = 'block';
+      }
+    });
+
+    // ── Load questions ─────────────────────────────────────────────────────
+    async function loadQuestions() {
+      const subject    = document.getElementById('filter-subject').value;
+      const difficulty = document.getElementById('filter-difficulty').value;
+      const type       = document.getElementById('filter-type').value;
+      let url = '/api/questions?';
+      if (subject)    url += `subject=${encodeURIComponent(subject)}&`;
+      if (difficulty) url += `difficulty=${encodeURIComponent(difficulty)}&`;
+      if (type)       url += `type=${encodeURIComponent(type)}`;
+
+      const tbody = document.getElementById('questions-tbody');
+      const res = await fetch(url, { credentials: 'include' });
+      if (res.status === 401) { window.location.href = '/index.html'; return; }
+      const data = await res.json();
+      const questions = data.questions || [];
+
+      if (!questions.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">No questions found.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = questions.map(q => {
+        const badgeClass = `badge-${q.difficulty.toLowerCase()}`;
+        const typeLabel = { MCQ_single: 'MCQ (single)', MCQ_multiple: 'MCQ (multi)', TrueFalse: 'True/False', ShortAnswer: 'Short Answer' }[q.type] || q.type;
+        return `<tr>
+          <td>${q.text.length > 60 ? q.text.substring(0, 60) + '…' : q.text}</td>
+          <td>${typeLabel}</td>
+          <td>${q.subject}</td>
+          <td><span class="badge ${badgeClass}">${q.difficulty}</span></td>
+          <td><button class="btn btn-red btn-sm" onclick="deleteQuestion(${q.id})" aria-label="Delete question">Delete</button></td>
+        </tr>`;
+      }).join('');
+    }
+
+    async function deleteQuestion(id) {
+      if (!confirm('Delete this question?')) return;
+      const csrfToken = await getCsrfToken();
+      const res = await fetch(`/api/questions/${id}`, {
+        method: 'DELETE',
+        headers: { 'X-CSRF-Token': csrfToken },
+        credentials: 'include',
+      });
+      const data = await res.json();
+      alert(res.ok ? data.message : data.error?.message);
+      if (res.ok) loadQuestions();
+    }
+
+    document.getElementById('filter-subject').addEventListener('input', loadQuestions);
+    document.getElementById('filter-difficulty').addEventListener('change', loadQuestions);
+    document.getElementById('filter-type').addEventListener('change', loadQuestions);
+
+    loadQuestions();
+  </script>
+</body>
+</html>

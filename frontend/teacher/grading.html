@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grading — Online Exam Portal</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f0f4f8; color: #1a202c; }
+    header { background: #276749; color: #fff; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { font-size: 1.2rem; }
+    .back-btn { background: transparent; border: 1px solid #fff; color: #fff; padding: 0.4rem 0.9rem; border-radius: 5px; cursor: pointer; font-size: 0.9rem; text-decoration: none; }
+    main { max-width: 1000px; margin: 2rem auto; padding: 0 1rem; }
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 1.5rem; margin-bottom: 1.5rem; }
+    h2 { font-size: 1.1rem; margin-bottom: 1rem; color: #2d3748; }
+    label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.3rem; }
+    select, input[type=number] { padding: 0.55rem 0.75rem; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 0.9rem; }
+    select { width: 100%; }
+    select:focus, input:focus { outline: 2px solid #4299e1; }
+    .btn { padding: 0.55rem 1.1rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 600; }
+    .btn-green  { background: #276749; color: #fff; }
+    .btn-blue   { background: #3182ce; color: #fff; }
+    .btn-orange { background: #dd6b20; color: #fff; }
+    .btn:hover  { opacity: 0.88; }
+    .btn:focus  { outline: 2px solid #2b6cb0; outline-offset: 2px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th, td { text-align: left; padding: 0.6rem 0.75rem; border-bottom: 1px solid #e2e8f0; }
+    th { background: #edf2f7; font-weight: 600; }
+    .answer-box { background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.75rem; font-size: 0.9rem; min-height: 50px; white-space: pre-wrap; }
+    .student-info { display: flex; gap: 2rem; margin-bottom: 1rem; font-size: 0.9rem; }
+    .student-info span { color: #718096; }
+    .student-info strong { color: #2d3748; }
+    .success-msg { color: #276749; background: #c6f6d5; padding: 0.6rem 0.75rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.75rem; display: none; }
+    .empty { color: #a0aec0; text-align: center; padding: 1.5rem 0; }
+    .score-row { display: flex; align-items: center; gap: 0.75rem; }
+    .score-row input { width: 80px; }
+    .released-banner { background: #c6f6d5; color: #276749; padding: 0.75rem 1rem; border-radius: 6px; font-weight: 600; display: none; margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Grading Interface</h1>
+    <a href="/teacher/dashboard.html" class="back-btn" aria-label="Back to dashboard">← Dashboard</a>
+  </header>
+
+  <main>
+    <!-- Step 1: Select exam and attempt -->
+    <section class="card" aria-labelledby="select-heading">
+      <h2 id="select-heading">Select Exam</h2>
+      <label for="exam-select">Exam</label>
+      <select id="exam-select" aria-label="Select exam to grade">
+        <option value="">— Select an exam —</option>
+      </select>
+
+      <div style="margin-top:1rem">
+        <label for="attempt-select">Student Submission</label>
+        <select id="attempt-select" aria-label="Select student submission" disabled>
+          <option value="">— Select exam first —</option>
+        </select>
+      </div>
+
+      <button class="btn btn-blue" id="load-btn" style="margin-top:1rem" aria-label="Load submission for grading">Load Submission</button>
+    </section>
+
+    <!-- Step 2: Grading area -->
+    <section class="card" id="grading-area" style="display:none" aria-labelledby="grade-heading">
+      <div class="released-banner" id="released-banner" role="status">✓ Results have been released to students for this exam.</div>
+      <h2 id="grade-heading">Grade Submission</h2>
+      <div class="student-info">
+        <div><span>Student: </span><strong id="student-name">—</strong></div>
+        <div><span>Exam: </span><strong id="exam-title-display">—</strong></div>
+        <div><span>Total Score: </span><strong id="total-score-display">—</strong></div>
+      </div>
+
+      <div id="success-msg" class="success-msg" role="status" aria-live="polite"></div>
+
+      <table aria-label="Student answers">
+        <thead><tr><th>#</th><th>Question</th><th>Type</th><th>Student Answer</th><th>Score / Max</th></tr></thead>
+        <tbody id="answers-tbody"></tbody>
+      </table>
+
+      <div style="display:flex;gap:1rem;margin-top:1.25rem;flex-wrap:wrap">
+        <button class="btn btn-green" id="save-scores-btn" aria-label="Save manual scores">Save Scores</button>
+        <button class="btn btn-orange" id="release-btn" aria-label="Release results to students">Release Results to Students</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let currentAttemptId = null;
+    let currentExamId = null;
+    let shortAnswerScores = {};
+
+    async function getCsrfToken() {
+      const res = await fetch('/api/auth/csrf-token', { credentials: 'include' });
+      return (await res.json()).csrfToken;
+    }
+
+    // Load teacher's exams
+    async function loadExams() {
+      const res = await fetch('/api/exams', { credentials: 'include' });
+      if (res.status === 401) { window.location.href = '/index.html'; return; }
+      const data = await res.json();
+      const select = document.getElementById('exam-select');
+      (data.exams || []).filter(e => e.status !== 'draft').forEach(e => {
+        const opt = document.createElement('option');
+        opt.value = e.id;
+        opt.textContent = `${e.title} (${e.status})`;
+        select.appendChild(opt);
+      });
+    }
+
+    // When exam selected, load submitted attempts
+    document.getElementById('exam-select').addEventListener('change', async function () {
+      const attemptSelect = document.getElementById('attempt-select');
+      attemptSelect.innerHTML = '<option value="">Loading...</option>';
+      attemptSelect.disabled = true;
+
+      if (!this.value) return;
+      currentExamId = parseInt(this.value);
+
+      // Fetch all submitted attempts for this exam via admin/grading
+      // We use the exam's attempts — Teacher sees all submissions
+      const res = await fetch(`/api/grading/attempts?examId=${this.value}`, { credentials: 'include' });
+      if (!res.ok) {
+        // Fallback: use exam detail to list attempts
+        attemptSelect.innerHTML = '<option value="">No submissions found</option>';
+        attemptSelect.disabled = false;
+        return;
+      }
+      const data = await res.json();
+      const attempts = data.attempts || [];
+      attemptSelect.innerHTML = attempts.length
+        ? attempts.map(a => `<option value="${a.id}">${a.student_name} — submitted ${new Date(a.submitted_at).toLocaleString()}</option>`).join('')
+        : '<option value="">No submissions yet</option>';
+      attemptSelect.disabled = false;
+    });
+
+    document.getElementById('load-btn').addEventListener('click', async () => {
+      const attemptId = document.getElementById('attempt-select').value;
+      if (!attemptId) { alert('Please select a submission.'); return; }
+      currentAttemptId = parseInt(attemptId);
+
+      const res = await fetch(`/api/grading/${currentAttemptId}`, { credentials: 'include' });
+      if (!res.ok) { alert('Failed to load submission.'); return; }
+      const data = await res.json();
+
+      document.getElementById('student-name').textContent     = data.attempt.student_name;
+      document.getElementById('exam-title-display').textContent = data.attempt.exam_title;
+      document.getElementById('total-score-display').textContent = data.attempt.total_score ?? 'Not graded yet';
+      document.getElementById('grading-area').style.display   = 'block';
+
+      shortAnswerScores = {};
+      const tbody = document.getElementById('answers-tbody');
+      tbody.innerHTML = (data.answers || []).map((a, i) => {
+        const isShort = a.type === 'ShortAnswer';
+        const scoreCell = isShort
+          ? `<div class="score-row">
+               <input type="number" min="0" max="${a.max_marks}" step="0.5" value="${a.manual_score ?? ''}"
+                 aria-label="Score for question ${i+1}" onchange="shortAnswerScores[${a.id}] = parseFloat(this.value)" />
+               <span>/ ${a.max_marks}</span>
+             </div>`
+          : `${a.auto_score ?? 0} / ${a.max_marks}`;
+        return `<tr>
+          <td>${i+1}</td>
+          <td>${a.text.length > 60 ? a.text.substring(0,60)+'…' : a.text}</td>
+          <td>${a.type}</td>
+          <td><div class="answer-box">${a.response || '<em>No answer</em>'}</div></td>
+          <td>${scoreCell}</td>
+        </tr>`;
+      }).join('');
+    });
+
+    document.getElementById('save-scores-btn').addEventListener('click', async () => {
+      const scores = Object.entries(shortAnswerScores).map(([answerId, score]) => ({
+        answerId: parseInt(answerId), score,
+      }));
+      if (!scores.length) { alert('No short answer scores to save.'); return; }
+
+      const csrfToken = await getCsrfToken();
+      const res = await fetch(`/api/grading/${currentAttemptId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        credentials: 'include',
+        body: JSON.stringify({ scores }),
+      });
+      const data = await res.json();
+      const msg = document.getElementById('success-msg');
+      if (res.ok) {
+        msg.textContent = `Scores saved. New total: ${data.totalScore}`;
+        msg.style.display = 'block';
+        document.getElementById('total-score-display').textContent = data.totalScore;
+      } else {
+        alert(data.error?.message || 'Failed to save scores.');
+      }
+    });
+
+    document.getElementById('release-btn').addEventListener('click', async () => {
+      if (!confirm('Release results for this exam? All students will be able to see their scores.')) return;
+      const csrfToken = await getCsrfToken();
+      const res = await fetch(`/api/grading/${currentExamId}/release`, {
+        method: 'PATCH',
+        headers: { 'X-CSRF-Token': csrfToken },
+        credentials: 'include',
+      });
+      const data = await res.json();
+      alert(res.ok ? data.message : data.error?.message);
+      if (res.ok) {
+        document.getElementById('released-banner').style.display = 'block';
+      }
+    });
+
+    loadExams();
+  </script>
+</body>
+</html>
