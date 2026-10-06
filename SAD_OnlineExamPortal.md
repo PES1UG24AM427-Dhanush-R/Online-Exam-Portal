@@ -157,7 +157,7 @@ The system is structured as a three-tier architecture:
   - **GradingModule** (`<<component>>`) — auto-grading for MCQ/True-False, manual grading interface, result release
   - **AdminModule** (`<<component>>`) — user management, role assignment, active exam monitoring, system health dashboard
 
-The Web Browser communicates with all six backend modules via **REST API / HTTPS**. There is no separate API Gateway component — HTTPS enforcement, JWT validation, RBAC checks, and input validation are all handled by Express middleware within the application tier.
+The Web Browser communicates with the backend over HTTPS. Authenticated requests include the JWT using the HTTP Authorization header with the Bearer scheme. JWTs are not transmitted through URL query parameters. HTTPS enforcement, JWT validation, RBAC checks, and input validation are handled by Express middleware within the application tier. There is no separate API Gateway component..
 
 **Data / External Services Tier:**
 - **MySQL Database** (`<<database>>`) — persistent storage for all data; accessed by all six backend modules via parameterized SQL queries over the internal network only; never exposed directly to the client
@@ -170,8 +170,7 @@ The Web Browser communicates with all six backend modules via **REST API / HTTPS
 > **Note on actors vs. components:** Student, Teacher, and Admin are external users (actors) who interact with the system through the Web Browser. They are not software components and do not appear in the component diagram as components.
 
 | Component | Responsibility | Key Interfaces |
-|---|---|---|
-| **Web Browser (Client)** | Renders the UI for all three roles (Student, Teacher, Admin). Sends HTTP requests to the backend REST API. Stores the JWT session token in a secure **HttpOnly cookie** to prevent XSS-based token theft (OEP-SR-004). | REST API over HTTPS |
+|| **Web Browser (Client)** | Renders the UI for all three roles (Student, Teacher, Admin). Sends HTTP requests to the backend REST API over HTTPS. Authenticated requests include the JWT using the `Authorization: Bearer <token>` header. JWTs are not transmitted through URL query parameters. | REST API over HTTPS ||
 | **AuthModule** | Handles user registration, login, JWT generation and validation, RBAC middleware (applied to all protected routes), account lockout, and password reset. HTTPS enforcement, JWT validation, RBAC role checks, and input validation are applied as Express middleware — there is no separate API Gateway component. | `/api/auth/*` endpoints; Email Service |
 | **QuestionBankModule** | Manages the full lifecycle of questions — creation, editing, deletion, tagging by subject/topic/difficulty, and retrieval for exam composition. | `/api/questions/*` endpoints; MySQL Database |
 | **ExamModule** | Allows Teachers to create exams by selecting questions, configure settings (duration, window, shuffle), and publish them. Manages exam state transitions (draft → published → closed). | `/api/exams/*` endpoints; MySQL Database |
