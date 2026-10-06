@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Student Dashboard — Online Exam Portal</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f0f4f8; color: #1a202c; }
+    header { background: #2b6cb0; color: #fff; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { font-size: 1.2rem; }
+    .logout-btn { background: transparent; border: 1px solid #fff; color: #fff; padding: 0.4rem 0.9rem; border-radius: 5px; cursor: pointer; font-size: 0.9rem; }
+    .logout-btn:hover { background: rgba(255,255,255,0.15); }
+    main { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+    h2 { font-size: 1.2rem; margin-bottom: 1rem; color: #2d3748; }
+    .section { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 1.5rem; margin-bottom: 2rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { text-align: left; padding: 0.6rem 0.75rem; border-bottom: 1px solid #e2e8f0; }
+    th { background: #edf2f7; font-weight: 600; }
+    .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.78rem; font-weight: 600; }
+    .badge-green { background: #c6f6d5; color: #276749; }
+    .badge-blue  { background: #bee3f8; color: #2c5282; }
+    .badge-gray  { background: #e2e8f0; color: #4a5568; }
+    .btn-start { background: #3182ce; color: #fff; border: none; padding: 0.4rem 0.9rem; border-radius: 5px; cursor: pointer; font-size: 0.85rem; }
+    .btn-start:hover { background: #2b6cb0; }
+    .btn-start:focus { outline: 2px solid #2b6cb0; outline-offset: 2px; }
+    .empty { color: #a0aec0; text-align: center; padding: 1.5rem 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Online Exam Portal — Student Dashboard</h1>
+    <button class="logout-btn" id="logout-btn" aria-label="Log out">Log Out</button>
+  </header>
+
+  <main>
+    <section class="section" aria-labelledby="upcoming-heading">
+      <h2 id="upcoming-heading">Available Exams</h2>
+      <table aria-label="Available exams list">
+        <thead>
+          <tr><th>Title</th><th>Start</th><th>End</th><th>Duration</th><th>Status</th><th>Action</th></tr>
+        </thead>
+        <tbody id="exams-tbody"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody>
+      </table>
+    </section>
+
+    <section class="section" aria-labelledby="results-heading">
+      <h2 id="results-heading">My Results</h2>
+      <div id="results-container"><p class="empty">No results available yet.</p></div>
+    </section>
+  </main>
+
+  <script>
+    async function getCsrfToken() {
+      const res = await fetch('/api/auth/csrf-token', { credentials: 'include' });
+      const data = await res.json();
+      return data.csrfToken;
+    }
+
+    async function loadExams() {
+      const tbody = document.getElementById('exams-tbody');
+      try {
+        const res = await fetch('/api/exams', { credentials: 'include' });
+        if (res.status === 401) { window.location.href = '/index.html'; return; }
+        const data = await res.json();
+        const exams = data.exams || [];
+        const now = new Date();
+
+        if (exams.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty">No exams available.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = exams.map(e => {
+          const start = new Date(e.start_datetime);
+          const end = new Date(e.end_datetime);
+          const isActive = now >= start && now <= end;
+          const isCompleted = e.attempt_status === 'submitted';
+          const isPending = now < start;
+
+          let badge = '';
+          if (isCompleted)      badge = '<span class="badge badge-gray">Completed</span>';
+          else if (isActive)    badge = '<span class="badge badge-green">Active</span>';
+          else if (isPending)   badge = '<span class="badge badge-blue">Upcoming</span>';
+          else                  badge = '<span class="badge badge-gray">Closed</span>';
+
+          const canStart = isActive && !isCompleted;
+          const action = canStart
+            ? `<button class="btn-start" onclick="startExam(${e.id})" aria-label="Start exam ${e.title}">Start</button>`
+            : '—';
+
+          return `<tr>
+            <td>${e.title}</td>
+            <td>${start.toLocaleString()}</td>
+            <td>${end.toLocaleString()}</td>
+            <td>${e.duration_minutes} min</td>
+            <td>${badge}</td>
+            <td>${action}</td>
+          </tr>`;
+        }).join('');
+      } catch {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty">Failed to load exams.</td></tr>';
+      }
+    }
+
+    function startExam(examId) {
+      window.location.href = `/student/exam.html?examId=${examId}`;
+    }
+
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+      const csrfToken = await getCsrfToken();
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': csrfToken },
+        credentials: 'include',
+      });
+      window.location.href = '/index.html';
+    });
+
+    loadExams();
+  </script>
+</body>
+</html>

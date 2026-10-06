@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard — Online Exam Portal</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f0f4f8; color: #1a202c; }
+    header { background: #c53030; color: #fff; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { font-size: 1.2rem; }
+    .logout-btn { background: transparent; border: 1px solid #fff; color: #fff; padding: 0.4rem 0.9rem; border-radius: 5px; cursor: pointer; font-size: 0.9rem; }
+    main { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+    .stat-card { background: #fff; border-radius: 8px; padding: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.07); text-align: center; }
+    .stat-card .num { font-size: 2rem; font-weight: 700; color: #3182ce; }
+    .stat-card .lbl { font-size: 0.85rem; color: #718096; margin-top: 0.25rem; }
+    .section { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 1.5rem; margin-bottom: 2rem; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    h2 { font-size: 1.1rem; color: #2d3748; }
+    .filters { display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    input[type=text], select { padding: 0.5rem 0.75rem; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 0.9rem; }
+    input[type=text]:focus, select:focus { outline: 2px solid #4299e1; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th, td { text-align: left; padding: 0.6rem 0.75rem; border-bottom: 1px solid #e2e8f0; }
+    th { background: #edf2f7; font-weight: 600; }
+    .btn { padding: 0.4rem 0.8rem; border: none; border-radius: 5px; cursor: pointer; font-size: 0.82rem; font-weight: 600; }
+    .btn-red   { background: #fed7d7; color: #c53030; }
+    .btn-green { background: #c6f6d5; color: #276749; }
+    .btn-blue  { background: #bee3f8; color: #2c5282; }
+    .btn-add   { background: #3182ce; color: #fff; padding: 0.5rem 1rem; font-size: 0.9rem; }
+    .btn:hover { opacity: 0.85; }
+    .btn:focus { outline: 2px solid #2b6cb0; outline-offset: 2px; }
+    .badge { display: inline-block; padding: 0.2rem 0.55rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+    .badge-active   { background: #c6f6d5; color: #276749; }
+    .badge-inactive { background: #fed7d7; color: #c53030; }
+    .empty { color: #a0aec0; text-align: center; padding: 1.5rem 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Online Exam Portal — Admin Dashboard</h1>
+    <button class="logout-btn" id="logout-btn" aria-label="Log out">Log Out</button>
+  </header>
+
+  <main>
+    <!-- System Health Stats -->
+    <section aria-label="System health statistics">
+      <div class="stats">
+        <div class="stat-card"><div class="num" id="stat-students">—</div><div class="lbl">Students</div></div>
+        <div class="stat-card"><div class="num" id="stat-teachers">—</div><div class="lbl">Teachers</div></div>
+        <div class="stat-card"><div class="num" id="stat-active-exams">—</div><div class="lbl">Active Exam Sessions</div></div>
+        <div class="stat-card"><div class="num" id="stat-uptime">—</div><div class="lbl">Server Uptime (s)</div></div>
+      </div>
+    </section>
+
+    <!-- Active Exams Monitor -->
+    <section class="section" aria-labelledby="active-exams-heading">
+      <h2 id="active-exams-heading">Active Exams Monitor</h2>
+      <table aria-label="Currently active exams">
+        <thead><tr><th>Exam ID</th><th>Title</th><th>Students Taking</th></tr></thead>
+        <tbody id="active-exams-tbody"><tr><td colspan="3" class="empty">Loading...</td></tr></tbody>
+      </table>
+    </section>
+
+    <!-- User Management -->
+    <section class="section" aria-labelledby="users-heading">
+      <div class="section-header">
+        <h2 id="users-heading">User Management</h2>
+        <button class="btn btn-add" id="add-user-btn" aria-label="Add new user">+ Add User</button>
+      </div>
+      <div class="filters">
+        <input type="text" id="search-input" placeholder="Search name or email..." aria-label="Search users" />
+        <select id="role-filter" aria-label="Filter by role">
+          <option value="">All Roles</option>
+          <option value="Student">Student</option>
+          <option value="Teacher">Teacher</option>
+          <option value="Admin">Admin</option>
+        </select>
+      </div>
+      <table aria-label="Users list">
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="users-tbody"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    async function getCsrfToken() {
+      const res = await fetch('/api/auth/csrf-token', { credentials: 'include' });
+      return (await res.json()).csrfToken;
+    }
+
+    async function loadDashboard() {
+      const res = await fetch('/api/admin/dashboard', { credentials: 'include' });
+      if (res.status === 401) { window.location.href = '/index.html'; return; }
+      const data = await res.json();
+
+      document.getElementById('stat-students').textContent = data.userCounts?.students ?? 0;
+      document.getElementById('stat-teachers').textContent = data.userCounts?.teachers ?? 0;
+      document.getElementById('stat-active-exams').textContent = data.activeExamCount ?? 0;
+      document.getElementById('stat-uptime').textContent = Math.floor(data.systemHealth?.uptime ?? 0);
+
+      const tbody = document.getElementById('active-exams-tbody');
+      if (!data.activeExams?.length) {
+        tbody.innerHTML = '<tr><td colspan="3" class="empty">No active exam sessions.</td></tr>';
+      } else {
+        tbody.innerHTML = data.activeExams.map(e =>
+          `<tr><td>${e.id}</td><td>${e.title}</td><td>${e.students_currently_taking}</td></tr>`
+        ).join('');
+      }
+    }
+
+    async function loadUsers() {
+      const search = document.getElementById('search-input').value;
+      const role = document.getElementById('role-filter').value;
+      let url = '/api/admin/users?';
+      if (search) url += `search=${encodeURIComponent(search)}&`;
+      if (role)   url += `role=${encodeURIComponent(role)}`;
+
+      const res = await fetch(url, { credentials: 'include' });
+      const data = await res.json();
+      const tbody = document.getElementById('users-tbody');
+
+      if (!data.users?.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">No users found.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.users.map(u =>
+        `<tr>
+          <td>${u.full_name}</td>
+          <td>${u.email}</td>
+          <td>${u.role}</td>
+          <td><span class="badge ${u.is_active ? 'badge-active' : 'badge-inactive'}">${u.is_active ? 'Active' : 'Inactive'}</span></td>
+          <td style="display:flex;gap:0.4rem">
+            <button class="btn ${u.is_active ? 'btn-red' : 'btn-green'}"
+              onclick="toggleUser(${u.id}, ${u.is_active})"
+              aria-label="${u.is_active ? 'Deactivate' : 'Activate'} ${u.full_name}">
+              ${u.is_active ? 'Deactivate' : 'Activate'}
+            </button>
+            <button class="btn btn-red" onclick="deleteUser(${u.id}, '${u.full_name}')" aria-label="Delete ${u.full_name}">Delete</button>
+          </td>
+        </tr>`
+      ).join('');
+    }
+
+    async function toggleUser(id, currentActive) {
+      const csrfToken = await getCsrfToken();
+      const res = await fetch(`/api/admin/users/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        credentials: 'include',
+        body: JSON.stringify({ isActive: !currentActive }),
+      });
+      const data = await res.json();
+      alert(res.ok ? data.message : data.error?.message);
+      if (res.ok) loadUsers();
+    }
+
+    async function deleteUser(id, name) {
+      if (!confirm(`Delete user "${name}"? This cannot be undone.`)) return;
+      const csrfToken = await getCsrfToken();
+      const res = await fetch(`/api/admin/users/${id}`, {
+        method: 'DELETE',
+        headers: { 'X-CSRF-Token': csrfToken },
+        credentials: 'include',
+      });
+      const data = await res.json();
+      alert(res.ok ? data.message : data.error?.message);
+      if (res.ok) loadUsers();
+    }
+
+    document.getElementById('search-input').addEventListener('input', loadUsers);
+    document.getElementById('role-filter').addEventListener('change', loadUsers);
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+      const csrfToken = await getCsrfToken();
+      await fetch('/api/auth/logout', { method: 'POST', headers: { 'X-CSRF-Token': csrfToken }, credentials: 'include' });
+      window.location.href = '/index.html';
+    });
+
+    // Auto-refresh dashboard every 30 seconds (OEP-F-020)
+    loadDashboard();
+    loadUsers();
+    setInterval(loadDashboard, 30000);
+  </script>
+</body>
+</html>

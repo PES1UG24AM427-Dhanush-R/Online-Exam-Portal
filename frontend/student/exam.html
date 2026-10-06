@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Exam — Online Exam Portal</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f0f4f8; color: #1a202c; }
+    header { background: #2b6cb0; color: #fff; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { font-size: 1.1rem; }
+    #timer { font-size: 1.2rem; font-weight: 700; background: #2c5282; padding: 0.4rem 1rem; border-radius: 6px; }
+    #timer.warning  { background: #dd6b20; }
+    #timer.critical { background: #c53030; }
+    .exam-layout { display: flex; gap: 1.5rem; max-width: 1100px; margin: 1.5rem auto; padding: 0 1rem; }
+    .question-area { flex: 1; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 1.75rem; }
+    .sidebar { width: 200px; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 1rem; }
+    .sidebar h3 { font-size: 0.9rem; margin-bottom: 0.75rem; color: #4a5568; }
+    .q-nav { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; }
+    .q-nav button { padding: 0.4rem; border: 1px solid #cbd5e0; border-radius: 4px; background: #fff; cursor: pointer; font-size: 0.85rem; }
+    .q-nav button.answered { background: #3182ce; color: #fff; border-color: #3182ce; }
+    .q-nav button.current  { outline: 2px solid #2b6cb0; }
+    .question-num { font-size: 0.85rem; color: #718096; margin-bottom: 0.5rem; }
+    .question-text { font-size: 1.05rem; font-weight: 600; margin-bottom: 1.25rem; line-height: 1.5; }
+    .option label { display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.6rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 0.6rem; cursor: pointer; }
+    .option label:hover { background: #ebf8ff; }
+    .option input { margin-top: 0.2rem; accent-color: #3182ce; }
+    textarea { width: 100%; border: 1px solid #cbd5e0; border-radius: 6px; padding: 0.6rem; font-size: 0.95rem; resize: vertical; min-height: 120px; }
+    textarea:focus { outline: 2px solid #4299e1; }
+    .nav-btns { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
+    .btn { padding: 0.6rem 1.25rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 600; }
+    .btn-secondary { background: #e2e8f0; color: #2d3748; }
+    .btn-primary   { background: #3182ce; color: #fff; }
+    .btn-danger    { background: #c53030; color: #fff; }
+    .btn:hover { opacity: 0.9; }
+    .btn:focus { outline: 2px solid #2b6cb0; outline-offset: 2px; }
+    .autosave-status { font-size: 0.8rem; color: #718096; margin-top: 0.5rem; }
+    .autosave-status.error { color: #c53030; }
+    #submit-confirm { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 10; }
+    #submit-confirm.show { display: flex; }
+    .modal { background: #fff; border-radius: 10px; padding: 2rem; max-width: 400px; width: 90%; text-align: center; }
+    .modal h2 { margin-bottom: 0.75rem; }
+    .modal p  { color: #4a5568; margin-bottom: 1.5rem; }
+    .modal-btns { display: flex; gap: 1rem; justify-content: center; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 id="exam-title">Loading exam...</h1>
+    <div id="timer" role="timer" aria-label="Time remaining" aria-live="polite">--:--</div>
+  </header>
+
+  <div class="exam-layout">
+    <section class="question-area" aria-label="Question">
+      <p class="question-num" id="question-num"></p>
+      <p class="question-text" id="question-text"></p>
+      <div id="options-area"></div>
+      <p class="autosave-status" id="autosave-status" aria-live="polite"></p>
+      <div class="nav-btns">
+        <button class="btn btn-secondary" id="prev-btn" aria-label="Previous question">← Previous</button>
+        <button class="btn btn-secondary" id="next-btn" aria-label="Next question">Next →</button>
+        <button class="btn btn-danger" id="submit-btn" style="margin-left:auto" aria-label="Submit exam">Submit Exam</button>
+      </div>
+    </section>
+
+    <aside class="sidebar" aria-label="Question navigation">
+      <h3>Questions</h3>
+      <div class="q-nav" id="q-nav" role="list"></div>
+    </aside>
+  </div>
+
+  <!-- Submit confirmation modal -->
+  <div id="submit-confirm" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+    <div class="modal">
+      <h2 id="confirm-title">Submit Exam?</h2>
+      <p>Once submitted, you cannot change your answers.</p>
+      <div class="modal-btns">
+        <button class="btn btn-secondary" id="cancel-submit">Cancel</button>
+        <button class="btn btn-danger" id="confirm-submit">Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const examId = parseInt(params.get('examId'));
+    let attemptId, questions = [], answers = {}, currentIndex = 0;
+    let remainingSeconds = 0, timerInterval, autosaveInterval;
+
+    async function getCsrfToken() {
+      const res = await fetch('/api/auth/csrf-token', { credentials: 'include' });
+      const data = await res.json();
+      return data.csrfToken;
+    }
+
+    async function init() {
+      const csrfToken = await getCsrfToken();
+      const res = await fetch('/api/attempt/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        credentials: 'include',
+        body: JSON.stringify({ examId }),
+      });
+
+      if (res.status === 401) { window.location.href = '/index.html'; return; }
+      const data = await res.json();
+      if (!res.ok) { alert(data.error?.message || 'Failed to start exam.'); window.location.href = '/student/dashboard.html'; return; }
+
+      attemptId = data.attemptId;
+      questions = data.questions;
+      remainingSeconds = data.remainingSeconds;
+
+      // Restore saved answers
+      (data.savedAnswers || []).forEach(a => { answers[a.questionId] = a.response; });
+
+      document.getElementById('exam-title').textContent = `Exam in Progress`;
+      buildNav();
+      renderQuestion(0);
+      startTimer();
+      startAutosave(csrfToken);
+    }
+
+    function buildNav() {
+      const nav = document.getElementById('q-nav');
+      nav.innerHTML = questions.map((q, i) =>
+        `<button role="listitem" aria-label="Question ${i+1}" onclick="renderQuestion(${i})" id="nav-${i}">${i+1}</button>`
+      ).join('');
+    }
+
+    function renderQuestion(index) {
+      currentIndex = index;
+      const q = questions[index];
+      document.getElementById('question-num').textContent = `Question ${index + 1} of ${questions.length}`;
+      document.getElementById('question-text').textContent = q.text;
+
+      const area = document.getElementById('options-area');
+      const saved = answers[q.questionId] || '';
+
+      if (q.type === 'MCQ_single' || q.type === 'TrueFalse') {
+        const opts = q.type === 'TrueFalse' ? ['True', 'False'] : (q.options || []);
+        area.innerHTML = opts.map(opt =>
+          `<div class="option"><label>
+            <input type="radio" name="answer" value="${opt}" ${saved === opt ? 'checked' : ''} aria-label="${opt}"/>
+            ${opt}
+          </label></div>`
+        ).join('');
+        area.querySelectorAll('input[type=radio]').forEach(r =>
+          r.addEventListener('change', () => { answers[q.questionId] = r.value; updateNav(); })
+        );
+      } else if (q.type === 'ShortAnswer') {
+        area.innerHTML = `<textarea aria-label="Your answer" placeholder="Type your answer here...">${saved}</textarea>`;
+        area.querySelector('textarea').addEventListener('input', (e) => {
+          answers[q.questionId] = e.target.value;
+          updateNav();
+        });
+      } else if (q.type === 'MCQ_multiple') {
+        let savedArr = [];
+        try { savedArr = JSON.parse(saved); } catch { savedArr = []; }
+        area.innerHTML = (q.options || []).map(opt =>
+          `<div class="option"><label>
+            <input type="checkbox" value="${opt}" ${savedArr.includes(opt) ? 'checked' : ''} aria-label="${opt}"/>
+            ${opt}
+          </label></div>`
+        ).join('');
+        area.querySelectorAll('input[type=checkbox]').forEach(cb =>
+          cb.addEventListener('change', () => {
+            const checked = [...area.querySelectorAll('input:checked')].map(c => c.value);
+            answers[q.questionId] = JSON.stringify(checked);
+            updateNav();
+          })
+        );
+      }
+
+      updateNav();
+      document.getElementById('prev-btn').disabled = index === 0;
+      document.getElementById('next-btn').disabled = index === questions.length - 1;
+    }
+
+    function updateNav() {
+      questions.forEach((q, i) => {
+        const btn = document.getElementById(`nav-${i}`);
+        btn.className = answers[q.questionId] ? 'answered' : '';
+        if (i === currentIndex) btn.classList.add('current');
+      });
+    }
+
+    document.getElementById('prev-btn').addEventListener('click', () => { if (currentIndex > 0) renderQuestion(currentIndex - 1); });
+    document.getElementById('next-btn').addEventListener('click', () => { if (currentIndex < questions.length - 1) renderQuestion(currentIndex + 1); });
+
+    // ── Timer (OEP-F-012) ──────────────────────────────────────────────────
+    function startTimer() {
+      const el = document.getElementById('timer');
+      timerInterval = setInterval(() => {
+        remainingSeconds--;
+        const m = Math.floor(remainingSeconds / 60).toString().padStart(2, '0');
+        const s = (remainingSeconds % 60).toString().padStart(2, '0');
+        el.textContent = `${m}:${s}`;
+        el.className = '';
+        if (remainingSeconds <= 300) el.classList.add('critical');
+        else if (remainingSeconds <= 600) el.classList.add('warning');
+        if (remainingSeconds <= 0) { clearInterval(timerInterval); submitExam(true); }
+      }, 1000);
+    }
+
+    // ── Auto-save (OEP-F-014) ──────────────────────────────────────────────
+    function startAutosave(csrfToken) {
+      autosaveInterval = setInterval(async () => {
+        const status = document.getElementById('autosave-status');
+        try {
+          const payload = Object.entries(answers).map(([qId, response]) => ({ questionId: parseInt(qId), response }));
+          const res = await fetch(`/api/attempt/${attemptId}/autosave`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+            credentials: 'include',
+            body: JSON.stringify({ answers: payload }),
+          });
+          if (res.ok) {
+            status.textContent = `Answers saved at ${new Date().toLocaleTimeString()}`;
+            status.className = 'autosave-status';
+          } else {
+            status.textContent = 'Auto-save failed — check your connection';
+            status.className = 'autosave-status error';
+          }
+        } catch {
+          status.textContent = 'Auto-save failed — check your connection';
+          status.className = 'autosave-status error';
+        }
+      }, 60000);
+    }
+
+    // ── Submit ─────────────────────────────────────────────────────────────
+    document.getElementById('submit-btn').addEventListener('click', () => {
+      document.getElementById('submit-confirm').classList.add('show');
+    });
+    document.getElementById('cancel-submit').addEventListener('click', () => {
+      document.getElementById('submit-confirm').classList.remove('show');
+    });
+    document.getElementById('confirm-submit').addEventListener('click', () => submitExam(false));
+
+    async function submitExam(isAuto) {
+      clearInterval(timerInterval);
+      clearInterval(autosaveInterval);
+      const csrfToken = await getCsrfToken();
+      const payload = Object.entries(answers).map(([qId, response]) => ({ questionId: parseInt(qId), response }));
+      const res = await fetch(`/api/attempt/${attemptId}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        credentials: 'include',
+        body: JSON.stringify({ answers: payload }),
+      });
+      if (res.ok) {
+        alert(isAuto ? 'Time is up! Your exam has been submitted.' : 'Exam submitted successfully.');
+        window.location.href = '/student/dashboard.html';
+      } else {
+        const data = await res.json();
+        alert(data.error?.message || 'Submission failed.');
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
