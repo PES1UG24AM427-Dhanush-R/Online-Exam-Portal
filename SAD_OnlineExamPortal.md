@@ -2,9 +2,9 @@
 
 **Project:** Online Exam Portal  
 **Version:** 1.0  
-**Authors:** [Person 2 Name]  
+**Authors:** Sumit Nagaraj Bali 
 **Date:** 29-09-2026  
-**Status:** Draft  
+**Status:** 
 
 ---
 
