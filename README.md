@@ -7,7 +7,6 @@ A web-based platform for educational institutions to create, schedule, administe
 ## Table of Contents
 
 - [Project Overview](#project-overview)
-- [Team Members & Roles](#team-members--roles)
 - [Tech Stack](#tech-stack)
 - [Prerequisites](#prerequisites)
 - [Installation & Setup](#installation--setup)
@@ -26,17 +25,6 @@ The **Online Exam Portal** is a scalable, secure, three-tier web application des
 - **Student:** View scheduled exams, attempt exams within strictly enforced time windows with server-authoritative countdown timers, auto-save progress every 60 seconds, submit attempts, and view released results.
 - **Teacher:** Create and manage questions in a centralized question bank, build and schedule exams, review student submissions, perform manual grading for short-answer questions, and release exam results.
 - **Admin:** Manage user accounts across all roles (Student, Teacher, Admin), monitor active exam sessions, view system audit logs, and oversee portal health.
-
----
-
-## Team Members & Roles
-
-| Name | Role | Deliverables & Responsibilities |
-|---|---|---|
-| **Dhanush R** | Person 1 | Software Requirements Specification (SRS), Core Frontend & Backend Modules |
-| **Sumit Nagaraj Bali** | Person 2 | Software Architecture and Design Specification (SAD), System Architecture & Database Design |
-| **Person 3** | Person 3 | Software Test Plan (STP), Test Strategy & Quality Assurance Specification |
-| **Person 4** | Person 4 | Project README, API Documentation (`API_DOCS.md`), and Deployment Guide (`DEPLOYMENT.md`) |
 
 ---
 
