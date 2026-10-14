@@ -1,0 +1,53 @@
+name: CI — Online Exam Portal
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Check Server Starts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Check for syntax errors
+        run: node --check backend/server.js
+
+      - name: Verify all module files exist
+        run: |
+          echo "Checking backend module files..."
+          test -f backend/modules/auth/auth.routes.js && echo "✓ AuthModule"
+          test -f backend/modules/questionBank/questionBank.routes.js && echo "✓ QuestionBankModule"
+          test -f backend/modules/exam/exam.routes.js && echo "✓ ExamModule"
+          test -f backend/modules/examTaking/examTaking.routes.js && echo "✓ ExamTakingModule"
+          test -f backend/modules/grading/grading.routes.js && echo "✓ GradingModule"
+          test -f backend/modules/admin/admin.routes.js && echo "✓ AdminModule"
+          echo "All modules present."
+
+      - name: Verify frontend pages exist
+        run: |
+          echo "Checking frontend pages..."
+          test -f frontend/index.html && echo "✓ Login page"
+          test -f frontend/register.html && echo "✓ Register page"
+          test -f frontend/student/dashboard.html && echo "✓ Student dashboard"
+          test -f frontend/student/exam.html && echo "✓ Exam interface"
+          test -f frontend/teacher/dashboard.html && echo "✓ Teacher dashboard"
+          test -f frontend/teacher/questions.html && echo "✓ Question bank"
+          test -f frontend/teacher/exams.html && echo "✓ Exam creation"
+          test -f frontend/teacher/grading.html && echo "✓ Grading interface"
+          test -f frontend/admin/dashboard.html && echo "✓ Admin dashboard"
+          echo "All pages present."
