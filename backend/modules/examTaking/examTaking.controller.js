@@ -264,10 +264,13 @@ async function getQuestionsForAttempt(conn, examId, shuffle) {
     questions = questions.sort(() => Math.random() - 0.5);
   }
 
-  // Parse options JSON
+  // Parse options JSON (mysql2 may already return JSON columns as arrays)
   return questions.map((q) => ({
     ...q,
-    options: q.options ? JSON.parse(q.options) : [],
+    options:
+      typeof q.options === 'string'
+        ? JSON.parse(q.options)
+        : q.options || [],
   }));
 }
 
