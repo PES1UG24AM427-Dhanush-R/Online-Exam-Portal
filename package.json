@@ -5,7 +5,10 @@
   "main": "backend/server.js",
   "scripts": {
     "start": "node backend/server.js",
-    "dev": "nodemon backend/server.js"
+    "dev": "nodemon backend/server.js",
+    "test": "node tests/test-load-perf-nf001.js && node tests/test-safe-errors-nf004.js && node tests/test-autosave-f014.js && node tests/test-duplicate-submission-f015.js && node tests/test-grading-results-f016-018.js && node tests/test-admin-f019-020.js && node tests/test-security-sr001-005.js",
+    "test:person3": "node tests/test-autosave-f014.js && node tests/test-duplicate-submission-f015.js && node tests/test-load-perf-nf001.js && node tests/test-safe-errors-nf004.js",
+    "test:person4": "node tests/test-grading-results-f016-018.js && node tests/test-admin-f019-020.js && node tests/test-security-sr001-005.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
