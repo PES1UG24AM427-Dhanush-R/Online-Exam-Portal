@@ -179,7 +179,9 @@
     function updateNav() {
       questions.forEach((q, i) => {
         const btn = document.getElementById(`nav-${i}`);
-        btn.className = answers[q.questionId] ? 'answered' : '';
+        const ans = answers[q.questionId];
+        const isAnswered = ans !== undefined && ans !== null && ans !== '' && ans !== '[]';
+        btn.className = isAnswered ? 'answered' : '';
         if (i === currentIndex) btn.classList.add('current');
       });
     }
@@ -215,10 +217,11 @@
             body: JSON.stringify({ answers: payload }),
           });
           if (res.ok) {
-            status.textContent = `Answers saved at ${new Date().toLocaleTimeString()}`;
+            status.textContent = `Answers auto-saved at ${new Date().toLocaleTimeString()}`;
             status.className = 'autosave-status';
           } else {
-            status.textContent = 'Auto-save failed — check your connection';
+            const data = await res.json().catch(() => ({}));
+            status.textContent = data.error?.message || 'Auto-save failed — check your connection';
             status.className = 'autosave-status error';
           }
         } catch {
@@ -238,22 +241,54 @@
     document.getElementById('confirm-submit').addEventListener('click', () => submitExam(false));
 
     async function submitExam(isAuto) {
+      const confirmBtn = document.getElementById('confirm-submit');
+      const submitBtn = document.getElementById('submit-btn');
+      if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Submitting...';
+      }
+      if (submitBtn) {
+        submitBtn.disabled = true;
+      }
+
       clearInterval(timerInterval);
       clearInterval(autosaveInterval);
       const csrfToken = await getCsrfToken();
       const payload = Object.entries(answers).map(([qId, response]) => ({ questionId: parseInt(qId), response }));
-      const res = await fetch(`/api/attempt/${attemptId}/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-        credentials: 'include',
-        body: JSON.stringify({ answers: payload }),
-      });
-      if (res.ok) {
-        alert(isAuto ? 'Time is up! Your exam has been submitted.' : 'Exam submitted successfully.');
-        window.location.href = '/student/dashboard.html';
-      } else {
-        const data = await res.json();
-        alert(data.error?.message || 'Submission failed.');
+      try {
+        const res = await fetch(`/api/attempt/${attemptId}/submit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          credentials: 'include',
+          body: JSON.stringify({ answers: payload }),
+        });
+        if (res.ok) {
+          alert(isAuto ? 'Time is up! Your exam has been submitted.' : 'Exam submitted successfully.');
+          window.location.href = '/student/dashboard.html';
+        } else {
+          const data = await res.json();
+          alert(data.error?.message || 'Submission failed.');
+          if (res.status === 409) {
+            window.location.href = '/student/dashboard.html';
+          } else {
+            if (confirmBtn) {
+              confirmBtn.disabled = false;
+              confirmBtn.textContent = 'Submit';
+            }
+            if (submitBtn) {
+              submitBtn.disabled = false;
+            }
+          }
+        }
+      } catch (err) {
+        alert('Network error during submission. Please try again.');
+        if (confirmBtn) {
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = 'Submit';
+        }
+        if (submitBtn) {
+          submitBtn.disabled = false;
+        }
       }
     }
 
