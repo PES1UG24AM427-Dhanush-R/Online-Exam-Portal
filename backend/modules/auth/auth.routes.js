@@ -3,6 +3,8 @@ const { body } = require('express-validator');
 const router = express.Router();
 
 const controller = require('./auth.controller');
+// OEP-F-005: forgot-password and reset-password routes handle
+// time-limited (1 hour), single-use password reset links
 const { authenticate } = require('../../middleware/auth');
 const { handleValidation } = require('../../middleware/validate');
 const { csrfProtection } = require('../../middleware/csrf');

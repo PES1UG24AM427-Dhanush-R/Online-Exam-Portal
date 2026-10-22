@@ -2,6 +2,13 @@
  * Role-Based Access Control middleware.
  * Usage: router.post('/route', authenticate, authorize('Teacher'), handler)
  * Satisfies: OEP-F-004, OEP-SR-001
+ *
+ * Role hierarchy:
+ *  - Student: can only access /api/attempt/* and view published exams
+ *  - Teacher: can access /api/questions/*, /api/exams/*, /api/grading/*
+ *  - Admin:   can access /api/admin/* and all other routes
+ *
+ * RBAC is enforced server-side on every protected route — never UI-only.
  */
 function authorize(...allowedRoles) {
   return (req, res, next) => {

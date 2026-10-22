@@ -1,5 +1,21 @@
 const pool = require('../../config/db');
 
+/**
+ * QuestionBankModule — manages the full lifecycle of questions.
+ *
+ * OEP-F-006: Teachers can create 4 question types:
+ *   - MCQ_single   (one correct answer)
+ *   - MCQ_multiple (multiple correct answers)
+ *   - TrueFalse    (True or False)
+ *   - ShortAnswer  (free text, manually graded)
+ *
+ * OEP-F-007: Each question is tagged with subject, topic, and difficulty
+ *   (Easy / Medium / Hard) for filtering during exam creation.
+ *
+ * OEP-F-008: Teachers can edit or delete questions ONLY if the question
+ *   is not part of an active or upcoming published exam.
+ */
+
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/questions — create a question (OEP-F-006)
 // ─────────────────────────────────────────────────────────────────────────────
