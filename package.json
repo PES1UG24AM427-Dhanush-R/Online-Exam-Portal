@@ -5,7 +5,10 @@
   "main": "backend/server.js",
   "scripts": {
     "start": "node backend/server.js",
-    "dev": "nodemon backend/server.js"
+    "dev": "nodemon backend/server.js",
+    "test": "npm run test:person4",
+    "test:person4": "node tests/test-grading-results-f016-018.js && node tests/test-admin-f019-020.js && node tests/test-security-sr001-005.js && node tests/test-accessibility-nf005.js",
+    "test:accessibility": "node tests/test-accessibility-nf005.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
