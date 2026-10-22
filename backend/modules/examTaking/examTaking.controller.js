@@ -60,9 +60,19 @@ exports.startAttempt = async (req, res, next) => {
       const attemptId = existing[0].id;
       const questions = await getQuestionsForAttempt(conn, examId, exam.shuffle);
       const savedAnswers = await getSavedAnswers(conn, attemptId);
-      const [attempt] = await conn.query('SELECT start_time FROM attempts WHERE id = ?', [attemptId]);
-      const elapsedSeconds = Math.floor((now - new Date(attempt[0].start_time)) / 1000);
+      const [attempt] = await conn.query(
+        'SELECT start_time, TIMESTAMPDIFF(SECOND, start_time, NOW()) AS elapsed_seconds FROM attempts WHERE id = ?',
+        [attemptId]
+      );
+      const elapsedSeconds = Math.max(0, attempt[0].elapsed_seconds || 0);
       const remainingSeconds = Math.max(0, exam.duration_minutes * 60 - elapsedSeconds);
+
+      if (remainingSeconds <= 0) {
+        await conn.query("UPDATE attempts SET status = 'timed_out' WHERE id = ?", [attemptId]);
+        return res.status(403).json({
+          error: { code: 'EXAM_TIMED_OUT', message: 'Exam time has expired.' },
+        });
+      }
 
       return res.json({
         attemptId,
@@ -108,9 +118,12 @@ exports.autosave = async (req, res, next) => {
   const { id: attemptId } = req.params;
   const { answers } = req.body; // [{ questionId, response }]
 
+  const conn = await pool.getConnection();
   try {
-    const [attempts] = await pool.query(
-      'SELECT id, status FROM attempts WHERE id = ? AND student_id = ?',
+    const [attempts] = await conn.query(
+      `SELECT a.id, a.status, e.end_datetime
+       FROM attempts a JOIN exams e ON a.exam_id = e.id
+       WHERE a.id = ? AND a.student_id = ?`,
       [attemptId, req.user.id]
     );
     if (attempts.length === 0) {
@@ -121,20 +134,31 @@ exports.autosave = async (req, res, next) => {
         error: { code: 'ALREADY_SUBMITTED', message: 'This exam has already been submitted.' },
       });
     }
-
-    // Upsert each answer
-    for (const ans of answers) {
-      await pool.query(
-        `INSERT INTO answers (attempt_id, question_id, response)
-         VALUES (?, ?, ?)
-         ON DUPLICATE KEY UPDATE response = VALUES(response)`,
-        [attemptId, ans.questionId, ans.response]
-      );
+    if (new Date() > new Date(attempts[0].end_datetime)) {
+      return res.status(403).json({
+        error: { code: 'EXAM_WINDOW_EXPIRED', message: 'The exam time window has expired.' },
+      });
     }
+
+    await conn.beginTransaction();
+    for (const ans of answers) {
+      if (ans.questionId !== undefined && ans.response !== undefined) {
+        await conn.query(
+          `INSERT INTO answers (attempt_id, question_id, response)
+           VALUES (?, ?, ?)
+           ON DUPLICATE KEY UPDATE response = VALUES(response)`,
+          [attemptId, ans.questionId, ans.response]
+        );
+      }
+    }
+    await conn.commit();
 
     res.json({ message: 'Answers saved.', savedAt: new Date().toISOString() });
   } catch (err) {
+    await conn.rollback().catch(() => {});
     next(err);
+  } finally {
+    conn.release();
   }
 };
 
@@ -186,11 +210,18 @@ exports.submit = async (req, res, next) => {
       );
     }
 
-    // Mark attempt as submitted
-    await conn.query(
-      "UPDATE attempts SET status = 'submitted', submitted_at = NOW() WHERE id = ?",
+    // Mark attempt as submitted with atomic status check
+    const [updateResult] = await conn.query(
+      "UPDATE attempts SET status = 'submitted', submitted_at = NOW() WHERE id = ? AND status = 'in_progress'",
       [attemptId]
     );
+
+    if (updateResult.affectedRows === 0) {
+      await conn.rollback();
+      return res.status(409).json({
+        error: { code: 'ALREADY_SUBMITTED', message: 'This exam has already been submitted.' },
+      });
+    }
 
     await conn.commit();
 
@@ -224,17 +255,24 @@ async function autoGrade(attemptId, examId) {
   let totalScore = 0;
 
   for (const ans of answers) {
-    const correctAnswer = JSON.parse(ans.correct_answer);
+    let correctAnswer = ans.correct_answer;
+    if (typeof correctAnswer === 'string') {
+      try { correctAnswer = JSON.parse(correctAnswer); } catch {}
+    }
     let score = 0;
 
     if (ans.type === 'MCQ_single' || ans.type === 'TrueFalse') {
-      score = ans.response === correctAnswer ? parseFloat(ans.marks) : 0;
+      score = String(ans.response).trim() === String(correctAnswer).trim() ? parseFloat(ans.marks) : 0;
     } else if (ans.type === 'MCQ_multiple') {
-      // All selected options must match exactly
       let studentAnswers = [];
-      try { studentAnswers = JSON.parse(ans.response); } catch { studentAnswers = []; }
+      try {
+        studentAnswers = typeof ans.response === 'string' ? JSON.parse(ans.response) : (ans.response || []);
+      } catch {
+        studentAnswers = [];
+      }
       const correct = Array.isArray(correctAnswer) ? correctAnswer : [correctAnswer];
       const isCorrect =
+        Array.isArray(studentAnswers) &&
         studentAnswers.length === correct.length &&
         correct.every((c) => studentAnswers.includes(c));
       score = isCorrect ? parseFloat(ans.marks) : 0;
@@ -264,10 +302,13 @@ async function getQuestionsForAttempt(conn, examId, shuffle) {
     questions = questions.sort(() => Math.random() - 0.5);
   }
 
-  // Parse options JSON
+  // Parse options JSON (mysql2 may already return JSON columns as arrays)
   return questions.map((q) => ({
     ...q,
-    options: q.options ? JSON.parse(q.options) : [],
+    options:
+      typeof q.options === 'string'
+        ? (function() { try { return JSON.parse(q.options); } catch { return []; } })()
+        : q.options || [],
   }));
 }
 

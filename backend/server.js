@@ -46,8 +46,15 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+// ── 404 handler for unknown API routes (OEP-NF-004) ─────────────────────────
+app.use('/api', (req, res) => {
+  res.status(404).json({
+    error: { code: 'NOT_FOUND', message: 'The requested API endpoint was not found.' },
+  });
+});
+
 // ── Global error handler (OEP-NF-004) ────────────────────────────────────────
-// Never expose stack traces or internal details to the client
+// Never expose stack traces, database errors, or internal details to the client
 app.use((err, req, res, next) => {
   console.error('[ERROR]', err);
 
@@ -58,13 +65,23 @@ app.use((err, req, res, next) => {
     });
   }
 
-  const status = err.status || 500;
-  const message = status < 500
-    ? err.message
-    : 'Something went wrong. Please try again later.';
+  // Malformed JSON error from body-parser
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return res.status(400).json({
+      error: { code: 'BAD_REQUEST', message: 'Invalid JSON payload provided.' },
+    });
+  }
 
-  res.status(status).json({
-    error: { code: err.code || 'INTERNAL_ERROR', message },
+  const status = err.status || 500;
+  // Guard against leaking internal database or system error codes
+  const isInternal = status >= 500 || (err.code && err.code.startsWith('ER_'));
+  const code = isInternal ? 'INTERNAL_ERROR' : (err.code || 'BAD_REQUEST');
+  const message = isInternal
+    ? 'Something went wrong. Please try again later.'
+    : err.message;
+
+  res.status(status >= 500 ? 500 : status).json({
+    error: { code, message },
   });
 });
 
