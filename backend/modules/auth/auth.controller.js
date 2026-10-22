@@ -4,10 +4,15 @@ const { v4: uuidv4 } = require('uuid');
 const nodemailer = require('nodemailer');
 const pool = require('../../config/db');
 
-const BCRYPT_ROUNDS = 12;
-const LOCKOUT_ATTEMPTS = 5;
-const LOCKOUT_MINUTES = 15;
-const RESET_TOKEN_EXPIRY_HOURS = 1;
+// OEP-F-001: Student registration uses bcrypt with 12 rounds (OEP-SR-002)
+// OEP-F-002: Login issues JWT stored in HttpOnly cookie
+// OEP-F-003: Account locked for 15 minutes after 5 failed attempts
+// OEP-F-004: RBAC enforced via middleware on every protected route
+// OEP-F-005: Password reset via single-use, 1-hour email link
+const BCRYPT_ROUNDS = 12;         // satisfies OEP-SR-002 (cost factor >= 10)
+const LOCKOUT_ATTEMPTS = 5;       // satisfies OEP-F-003
+const LOCKOUT_MINUTES = 15;       // satisfies OEP-F-003
+const RESET_TOKEN_EXPIRY_HOURS = 1; // satisfies OEP-F-005
 
 // ── Email transporter ─────────────────────────────────────────────────────────
 const transporter = nodemailer.createTransport({
