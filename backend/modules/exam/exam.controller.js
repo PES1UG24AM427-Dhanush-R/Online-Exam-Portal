@@ -1,5 +1,19 @@
 const pool = require('../../config/db');
 
+/**
+ * ExamModule — handles exam creation, configuration, and publishing.
+ *
+ * OEP-F-009: Teachers create exams by selecting questions from the question
+ *   bank and assigning marks to each question. Total marks are auto-calculated.
+ *
+ * OEP-F-010: Exam settings include duration (minutes), start datetime,
+ *   end datetime, and shuffle (randomise question order).
+ *
+ * OEP-F-011: Publishing transitions exam from 'draft' to 'published'.
+ *   Published exams are visible to Students only after start_datetime.
+ *   Unpublished (draft) exams are never visible to Students.
+ */
+
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/exams — create exam (OEP-F-009, OEP-F-010)
 // ─────────────────────────────────────────────────────────────────────────────
