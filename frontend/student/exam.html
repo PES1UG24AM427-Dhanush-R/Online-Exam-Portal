@@ -179,7 +179,9 @@
     function updateNav() {
       questions.forEach((q, i) => {
         const btn = document.getElementById(`nav-${i}`);
-        btn.className = answers[q.questionId] ? 'answered' : '';
+        const ans = answers[q.questionId];
+        const isAnswered = ans !== undefined && ans !== null && ans !== '' && ans !== '[]';
+        btn.className = isAnswered ? 'answered' : '';
         if (i === currentIndex) btn.classList.add('current');
       });
     }
@@ -215,10 +217,11 @@
             body: JSON.stringify({ answers: payload }),
           });
           if (res.ok) {
-            status.textContent = `Answers saved at ${new Date().toLocaleTimeString()}`;
+            status.textContent = `Answers auto-saved at ${new Date().toLocaleTimeString()}`;
             status.className = 'autosave-status';
           } else {
-            status.textContent = 'Auto-save failed — check your connection';
+            const data = await res.json().catch(() => ({}));
+            status.textContent = data.error?.message || 'Auto-save failed — check your connection';
             status.className = 'autosave-status error';
           }
         } catch {
