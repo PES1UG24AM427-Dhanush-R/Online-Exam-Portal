@@ -195,7 +195,8 @@
         options = [...rows].map(r => r.querySelector('input[type=text]').value.trim());
         const checked = optionsList.querySelector('input[type=radio]:checked');
         if (!checked) { errorMsg.textContent = 'Please select the correct answer.'; errorMsg.style.display = 'block'; return; }
-        correctAnswer = checked.value || checked.closest('.option-row').querySelector('input[type=text]').value.trim();
+        const textInput = checked.closest('.option-row').querySelector('input[type=text]');
+        correctAnswer = type === 'TrueFalse' ? checked.value : (textInput ? textInput.value.trim() : '');
       } else if (type === 'MCQ_multiple') {
         const rows = optionsList.querySelectorAll('.option-row');
         options = [...rows].map(r => r.querySelector('input[type=text]').value.trim());
