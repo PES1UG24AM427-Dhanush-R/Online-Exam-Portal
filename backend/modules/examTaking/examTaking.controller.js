@@ -210,11 +210,18 @@ exports.submit = async (req, res, next) => {
       );
     }
 
-    // Mark attempt as submitted
-    await conn.query(
-      "UPDATE attempts SET status = 'submitted', submitted_at = NOW() WHERE id = ?",
+    // Mark attempt as submitted with atomic status check
+    const [updateResult] = await conn.query(
+      "UPDATE attempts SET status = 'submitted', submitted_at = NOW() WHERE id = ? AND status = 'in_progress'",
       [attemptId]
     );
+
+    if (updateResult.affectedRows === 0) {
+      await conn.rollback();
+      return res.status(409).json({
+        error: { code: 'ALREADY_SUBMITTED', message: 'This exam has already been submitted.' },
+      });
+    }
 
     await conn.commit();
 
@@ -248,17 +255,24 @@ async function autoGrade(attemptId, examId) {
   let totalScore = 0;
 
   for (const ans of answers) {
-    const correctAnswer = JSON.parse(ans.correct_answer);
+    let correctAnswer = ans.correct_answer;
+    if (typeof correctAnswer === 'string') {
+      try { correctAnswer = JSON.parse(correctAnswer); } catch {}
+    }
     let score = 0;
 
     if (ans.type === 'MCQ_single' || ans.type === 'TrueFalse') {
-      score = ans.response === correctAnswer ? parseFloat(ans.marks) : 0;
+      score = String(ans.response).trim() === String(correctAnswer).trim() ? parseFloat(ans.marks) : 0;
     } else if (ans.type === 'MCQ_multiple') {
-      // All selected options must match exactly
       let studentAnswers = [];
-      try { studentAnswers = JSON.parse(ans.response); } catch { studentAnswers = []; }
+      try {
+        studentAnswers = typeof ans.response === 'string' ? JSON.parse(ans.response) : (ans.response || []);
+      } catch {
+        studentAnswers = [];
+      }
       const correct = Array.isArray(correctAnswer) ? correctAnswer : [correctAnswer];
       const isCorrect =
+        Array.isArray(studentAnswers) &&
         studentAnswers.length === correct.length &&
         correct.every((c) => studentAnswers.includes(c));
       score = isCorrect ? parseFloat(ans.marks) : 0;
