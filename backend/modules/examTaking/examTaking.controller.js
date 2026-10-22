@@ -1,5 +1,17 @@
 const pool = require('../../config/db');
 
+/**
+ * ExamTakingModule — controls student access to exams and submission.
+ *
+ * OEP-F-012: Countdown timer displayed to Student during exam.
+ *   Timer is SERVER-AUTHORITATIVE — calculated from attempt start_time
+ *   on every request, not from the client clock. Auto-submits at zero.
+ *
+ * OEP-F-013: Exam access window enforced server-side.
+ *   Students cannot start an exam before start_datetime or after end_datetime.
+ *   Returns 403 Forbidden if outside the window.
+ */
+
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/attempt/start — start exam attempt (OEP-F-012, OEP-F-013, OEP-F-015)
 // ─────────────────────────────────────────────────────────────────────────────
