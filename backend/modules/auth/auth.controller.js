@@ -181,14 +181,10 @@ exports.login = async (req, res, next) => {
 exports.logout = async (req, res, next) => {
   try {
     const token = req.token;
-    const decoded = jwt.decode(token);
-    const expiresAt = decoded?.exp
-      ? new Date(decoded.exp * 1000)
-      : new Date(Date.now() + 30 * 60 * 1000);
 
     await pool.query(
-      'INSERT INTO token_denylist (token, expires_at) VALUES (?, ?)',
-      [token, expiresAt]
+      'INSERT INTO token_denylist (token, expires_at) VALUES (?, DATE_ADD(NOW(), INTERVAL 1 HOUR))',
+      [token]
     );
 
     res.clearCookie('token');
