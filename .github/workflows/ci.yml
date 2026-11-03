@@ -54,6 +54,8 @@ jobs:
           echo "All pages present."
 
       - name: Run Accessibility & Uptime Automated Test Suites
+        env:
+          NODE_ENV: test
         run: |
           node tests/test-accessibility-nf005.js
           node tests/test-uptime-monitoring-nf002.js

@@ -14,7 +14,10 @@ const pool = mysql.createPool({
   timezone: '+00:00',        // store all datetimes in UTC
 });
 
-// Test connectivity on startup
+// Test connectivity on startup.
+// In test environments (NODE_ENV=test or no DB configured) we log a warning
+// instead of exiting, so unit tests that import this module can run without
+// a live MySQL instance (the pool itself handles reconnections lazily).
 pool.getConnection()
   .then((conn) => {
     console.log('Database connected successfully');
@@ -22,7 +25,10 @@ pool.getConnection()
   })
   .catch((err) => {
     console.error('Database connection failed:', err.message);
-    process.exit(1);
+    if (process.env.NODE_ENV !== 'test') {
+      process.exit(1);
+    }
+    console.warn('Running without database — degraded mode (test environment).');
   });
 
 module.exports = pool;
