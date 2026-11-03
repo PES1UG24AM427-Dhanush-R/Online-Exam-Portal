@@ -16,6 +16,7 @@ This guide provides comprehensive instructions for deploying, configuring, maint
 - [Starting the Server](#starting-the-server)
   - [Development Mode](#development-mode)
   - [Production Mode](#production-mode)
+- [Reliability & Ops Monitoring (OEP-NF-002)](#reliability--ops-monitoring-oep-nf-002)
 - [Common Errors & Troubleshooting](#common-errors--troubleshooting)
 - [Out of Scope / Not Implemented in v1.0](#out-of-scope--not-implemented-in-v10)
 
@@ -171,6 +172,60 @@ In production environments, ensure process managers (such as PM2 or systemd) are
 4. Reverse Proxy Setup: Place Nginx or Apache in front of Node.js to terminate TLS (HTTPS) and route requests to `http://127.0.0.1:3000`.
 
 ---
+
+---
+
+## Reliability & Ops Monitoring (OEP-NF-002)
+
+The **Online Exam Portal** implements strict reliability controls and uptime monitoring to comply with non-functional requirement **OEP-NF-002**.
+
+### 1. Service Level Agreement (SLA) & Monthly Uptime Budget
+
+- **Target Availability:** >= 99.5% uptime per calendar month.
+- **Monthly Baseline:** 30 days = 720 hours = 43,200 minutes = 2,592,000 seconds.
+- **Maximum Permissible Unplanned Downtime:** `0.5% * 43,200 min = 216 minutes` (3 hours 36 minutes per month).
+- **Calculation Formula:**
+  $\text{Availability} = \left( \frac{\text{Effective Operational Minutes} - \text{Unplanned Downtime Minutes}}{\text{Effective Operational Minutes}} \right) \times 100\%$
+
+### 2. Scheduled Maintenance Window Policy (24-Hour Notice Rule)
+
+In strict accordance with **OEP-NF-002**:
+- Scheduled maintenance windows are **excluded** from the monthly uptime calculation only if announced at least **24 hours in advance**.
+- Any unannounced downtime, emergency hotfixes, or maintenance windows announced with less than 24 hours of advance warning are treated as **unplanned downtime** and directly deducted from the 216-minute monthly downtime budget.
+- Scheduled maintenance can be registered via `POST /api/admin/maintenance` and viewed via `GET /api/admin/maintenance`.
+
+### 3. Automated Health Probes & Monitoring Setup
+
+Production deployments should configure automated synthetic probes to query the health endpoint:
+
+- **Health Probe Endpoint:** `GET /api/health`
+- **Recommended Ping Interval:** Every 30 to 60 seconds
+- **Probe Timeout:** 5 seconds
+- **Health Indicators:**
+  - Status `ok`: Server and database operational.
+  - Status `degraded`: Database unreachable or connection pool exhausted (returns HTTP 500).
+- **Recommended Probing Agents:** Uptime Kuma, Prometheus Blackbox Exporter, Datadog Synthetics, or Pingdom.
+
+### 4. Process Resilience with PM2
+
+To achieve 99.5% uptime in production environments, run the Node.js application under a process supervisor to guarantee instant automatic recovery from uncaught exceptions or transient failures:
+
+```bash
+# Start server under PM2 process supervisor
+pm2 start backend/server.js --name "online-exam-portal" --max-memory-restart 500M
+
+# Enable automatic resurrection across server reboots
+pm2 startup
+pm2 save
+```
+
+### 5. Automated Verification
+
+Run the automated Ops monitoring verification test suite:
+
+```bash
+npm run test:uptime
+```
 
 ## Common Errors & Troubleshooting
 

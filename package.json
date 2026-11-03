@@ -6,8 +6,9 @@
   "scripts": {
     "start": "node backend/server.js",
     "dev": "nodemon backend/server.js",
-    "test": "npm run test:person4",
+    "test": "npm run test:person4 && npm run test:uptime",
     "test:person4": "node tests/test-grading-results-f016-018.js && node tests/test-admin-f019-020.js && node tests/test-security-sr001-005.js && node tests/test-accessibility-nf005.js",
+    "test:uptime": "node tests/test-uptime-monitoring-nf002.js",
     "test:accessibility": "node tests/test-accessibility-nf005.js"
   },
   "dependencies": {

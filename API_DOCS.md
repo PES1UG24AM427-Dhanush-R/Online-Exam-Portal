@@ -50,6 +50,9 @@ This document provides complete specification for all REST API endpoints provide
   - [PATCH /api/admin/users/:id](#patch-apiadminusersid)
   - [DELETE /api/admin/users/:id](#delete-apiadminusersid)
   - [GET /api/admin/dashboard](#get-apiadmindashboard)
+  - [GET /api/admin/uptime](#get-apiadminuptime)
+  - [POST /api/admin/maintenance](#post-apiadminmaintenance)
+  - [GET /api/admin/maintenance](#get-apiadminmaintenance)
 - [Health](#health)
   - [GET /api/health](#get-apihealth)
 
@@ -1213,6 +1216,113 @@ This document provides complete specification for all REST API endpoints provide
 ---
 
 ## Health
+
+---
+
+### GET /api/admin/uptime
+
+- **Description:** Returns monthly uptime metrics, SLA target compliance (OEP-NF-002: >= 99.5%), allowable downtime thresholds, and scheduled maintenance windows.
+- **Authentication Required:** Yes
+- **Role Required:** Admin
+- **Request Body:** N/A
+- **Success Response:**
+  - **Status Code:** `200 OK`
+  - **Body:**
+    ```json
+    {
+      "status": "ok",
+      "processUptimeSeconds": 12345.67,
+      "monthlyUptimePercentage": 99.98,
+      "targetSla": 99.5,
+      "isSlaMet": true,
+      "maxAllowedUnplannedDowntimeMinutes": 216,
+      "activeExamSessions": 0,
+      "totalMonitoredDays": 30,
+      "maintenanceWindowsCount": 1,
+      "maintenanceWindows": [],
+      "slaSpecification": {
+        "requirementId": "OEP-NF-002",
+        "targetMonthlyAvailability": "99.5%",
+        "maximumUnplannedDowntimeMinutes": 216,
+        "scheduledMaintenancePolicy": "Excluded if announced at least 24 hours in advance"
+      },
+      "timestamp": "2026-10-07T15:00:00.000Z"
+    }
+    ```
+- **Error Responses:**
+  - **Status Code:** `403 Forbidden`
+    ```json
+    {
+      "error": {
+        "code": "FORBIDDEN",
+        "message": "Access denied. Required role: Admin."
+      }
+    }
+    ```
+
+---
+
+### POST /api/admin/maintenance
+
+- **Description:** Schedules a maintenance window. Enforces the 24-hour advance notice requirement per OEP-NF-002 to qualify for SLA downtime penalty exclusion.
+- **Authentication Required:** Yes
+- **Role Required:** Admin
+- **Request Body:**
+  ```json
+  {
+    "title": "String (required)",
+    "description": "String (optional)",
+    "startTime": "String (required, ISO8601)",
+    "endTime": "String (required, ISO8601)",
+    "announcedAt": "String (optional, defaults to now)"
+  }
+  ```
+- **Success Response:**
+  - **Status Code:** `201 Created`
+  - **Body:**
+    ```json
+    {
+      "message": "Maintenance window scheduled successfully (qualifies for OEP-NF-002 SLA exclusion).",
+      "maintenanceWindow": {
+        "id": 1,
+        "title": "Database Security Patching",
+        "startTime": "2026-10-15T02:00:00.000Z",
+        "endTime": "2026-10-15T04:00:00.000Z",
+        "announcedAt": "2026-10-13T02:00:00.000Z",
+        "advanceNoticeHours": 48,
+        "qualifiesForExclusion": true,
+        "status": "scheduled"
+      }
+    }
+    ```
+
+---
+
+### GET /api/admin/maintenance
+
+- **Description:** Retrieves all scheduled and historical maintenance windows with their advance notice calculation and SLA exclusion eligibility.
+- **Authentication Required:** Yes
+- **Role Required:** Admin
+- **Request Body:** N/A
+- **Success Response:**
+  - **Status Code:** `200 OK`
+  - **Body:**
+    ```json
+    {
+      "maintenanceWindows": [
+        {
+          "id": 1,
+          "title": "Database Security Patching",
+          "startTime": "2026-10-15T02:00:00.000Z",
+          "endTime": "2026-10-15T04:00:00.000Z",
+          "announcedAt": "2026-10-13T02:00:00.000Z",
+          "advanceNoticeHours": 48,
+          "qualifiesForExclusion": true,
+          "status": "scheduled"
+        }
+      ]
+    }
+    ```
 
 ### GET /api/health
 

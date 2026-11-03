@@ -980,6 +980,41 @@ Verify that the Online Exam Portal meets WCAG 2.1 Level AA accessibility require
 - **Pass:** No critical accessibility violations are identified and the tested interfaces satisfy the required WCAG 2.1 Level AA criteria.
 - **Fail:** Critical accessibility barriers remain or required keyboard, contrast, or ARIA support is missing.
 
+---
+
+#### TC-Ops-01 — Monthly Uptime and Ops Monitoring
+
+**Requirement ID:** OEP-NF-002
+
+**Test Objective:**  
+Verify that the system maintains at least 99.5% monthly availability, that scheduled maintenance windows announced at least 24 hours in advance are excluded from downtime calculations, and that health check endpoints report system uptime and SLA status.
+
+**Preconditions:**
+1. The Online Exam Portal backend is running.
+2. Ops monitoring service and health endpoint (`/api/health`) are active.
+3. System uptime log tables and maintenance window tables are initialized.
+
+**Test Steps:**
+1. Query the health check endpoint (`GET /api/health`) and verify response indicators.
+2. Verify baseline availability calculation (0 downtime yields 100% uptime).
+3. Verify partial downtime handling within the 216-minute monthly allowance.
+4. Verify exact 99.5% threshold boundary condition (216 minutes downtime).
+5. Verify SLA breach detection when cumulative unplanned downtime exceeds 216 minutes.
+6. Verify that scheduled maintenance windows announced at least 24 hours in advance are excluded from downtime penalties.
+7. Verify that maintenance windows announced with less than 24 hours advance notice are penalized as unplanned downtime.
+8. Query Admin uptime reporting API (`GET /api/admin/uptime`) and Admin dashboard metrics.
+
+**Expected Result:**
+- Monthly uptime calculation complies with the 99.5% availability standard.
+- Unplanned downtime > 216 minutes correctly triggers an SLA breach alert.
+- Scheduled maintenance announced >= 24h in advance is excluded from downtime.
+- Late or unannounced maintenance counts toward the downtime budget.
+- Health endpoints and admin dashboards report system health and uptime metrics accurately.
+
+**Pass/Fail Criteria:**
+- **Pass:** The system satisfies the 99.5% monthly availability model and enforces the 24-hour advance announcement rule.
+- **Fail:** Uptime calculations fail, maintenance exclusion rules are violated, or health indicators do not report accurately.
+
 ### 4.8 Security Test Cases
 
 #### TC-Sec-01 — HTTPS and TLS Security

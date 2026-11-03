@@ -36,6 +36,7 @@ jobs:
           test -f backend/modules/examTaking/examTaking.routes.js && echo "✓ ExamTakingModule"
           test -f backend/modules/grading/grading.routes.js && echo "✓ GradingModule"
           test -f backend/modules/admin/admin.routes.js && echo "✓ AdminModule"
+          test -f backend/modules/monitoring/uptime.service.js && echo "✓ MonitoringService"
           echo "All modules present."
 
       - name: Verify frontend pages exist
@@ -51,3 +52,8 @@ jobs:
           test -f frontend/teacher/grading.html && echo "✓ Grading interface"
           test -f frontend/admin/dashboard.html && echo "✓ Admin dashboard"
           echo "All pages present."
+
+      - name: Run Accessibility & Uptime Automated Test Suites
+        run: |
+          node tests/test-accessibility-nf005.js
+          node tests/test-uptime-monitoring-nf002.js

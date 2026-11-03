@@ -1,5 +1,6 @@
 const bcrypt = require('bcrypt');
 const pool = require('../../config/db');
+const uptimeService = require('../monitoring/uptime.service');
 
 const BCRYPT_ROUNDS = 12;
 
@@ -118,7 +119,7 @@ exports.deleteUser = async (req, res, next) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /api/admin/dashboard — system health dashboard (OEP-F-020)
+// GET /api/admin/dashboard — system health dashboard (OEP-F-020 & OEP-NF-002)
 // ─────────────────────────────────────────────────────────────────────────────
 exports.getDashboard = async (req, res, next) => {
   try {
@@ -145,13 +146,91 @@ exports.getDashboard = async (req, res, next) => {
        FROM users`
     );
 
+    const uptimeSummary = await uptimeService.getUptimeSummary();
+
     res.json({
-      systemHealth: { status: 'ok', uptime: process.uptime() },
+      systemHealth: {
+        status: 'ok',
+        uptime: process.uptime(),
+        uptimePercentage: uptimeSummary.monthlyUptimePercentage,
+        isSlaMet: uptimeSummary.isSlaMet,
+        slaTarget: uptimeSummary.targetSla,
+      },
       activeExamCount: activeExams.active_exam_count,
       activeExams: activeExamDetails,
       userCounts,
       timestamp: new Date().toISOString(),
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/admin/uptime — detailed Ops Monitoring & Reliability metrics (OEP-NF-002)
+// ─────────────────────────────────────────────────────────────────────────────
+exports.getUptimeStats = async (req, res, next) => {
+  try {
+    const summary = await uptimeService.getUptimeSummary();
+    const maintenanceWindows = await uptimeService.listMaintenanceWindows();
+
+    res.json({
+      ...summary,
+      maintenanceWindows,
+      slaSpecification: {
+        requirementId: 'OEP-NF-002',
+        targetMonthlyAvailability: '99.5%',
+        maximumUnplannedDowntimeMinutes: 216,
+        scheduledMaintenancePolicy: 'Excluded if announced at least 24 hours in advance',
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/admin/maintenance — schedule maintenance window (OEP-NF-002)
+// ─────────────────────────────────────────────────────────────────────────────
+exports.createMaintenanceWindow = async (req, res, next) => {
+  const { title, description, startTime, endTime, announcedAt } = req.body;
+
+  try {
+    if (!title || !startTime || !endTime) {
+      return res.status(400).json({
+        error: { code: 'INVALID_INPUT', message: 'Title, start time, and end time are required.' },
+      });
+    }
+
+    const windowData = await uptimeService.scheduleMaintenanceWindow({
+      title,
+      description,
+      startTime,
+      endTime,
+      announcedAt: announcedAt || new Date().toISOString(),
+      createdBy: req.user?.id || 1,
+    });
+
+    res.status(201).json({
+      message: windowData.qualifiesForExclusion
+        ? 'Maintenance window scheduled successfully (qualifies for OEP-NF-002 SLA exclusion).'
+        : 'Maintenance window scheduled with warning: Announced with <24h advance notice, will count as downtime toward 99.5% SLA.',
+      maintenanceWindow: windowData,
+    });
+  } catch (err) {
+    res.status(400).json({
+      error: { code: 'MAINTENANCE_ERROR', message: err.message },
+    });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/admin/maintenance — list scheduled maintenance windows (OEP-NF-002)
+// ─────────────────────────────────────────────────────────────────────────────
+exports.getMaintenanceWindows = async (req, res, next) => {
+  try {
+    const windows = await uptimeService.listMaintenanceWindows();
+    res.json({ maintenanceWindows: windows });
   } catch (err) {
     next(err);
   }

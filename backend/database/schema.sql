@@ -177,3 +177,40 @@ CREATE TABLE IF NOT EXISTS results_released (
   FOREIGN KEY (exam_id)     REFERENCES exams(id)  ON DELETE CASCADE,
   FOREIGN KEY (released_by) REFERENCES users(id)  ON DELETE RESTRICT
 );
+
+
+-- ─────────────────────────────────────────────
+-- maintenance_windows
+-- Stores scheduled maintenance windows for OEP-NF-002.
+-- Maintenance announced >= 24h in advance is excluded from monthly uptime calculation.
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS maintenance_windows (
+  id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  title         VARCHAR(255) NOT NULL,
+  description   TEXT         NULL,
+  start_time    DATETIME     NOT NULL,
+  end_time      DATETIME     NOT NULL,
+  announced_at  DATETIME     NOT NULL,
+  status        ENUM('scheduled', 'in_progress', 'completed', 'cancelled') NOT NULL DEFAULT 'scheduled',
+  created_by    INT UNSIGNED NOT NULL,
+  created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT,
+  INDEX idx_window_time (start_time, end_time),
+  INDEX idx_status      (status)
+);
+
+-- ─────────────────────────────────────────────
+-- uptime_logs
+-- Records periodic health check pings and outages for OEP-NF-002 monthly uptime tracking.
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS uptime_logs (
+  id                    INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  timestamp             DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  status                ENUM('up', 'degraded', 'down', 'maintenance') NOT NULL DEFAULT 'up',
+  response_time_ms      DECIMAL(7,2) NULL,
+  error_message         VARCHAR(255) NULL,
+  maintenance_window_id INT UNSIGNED NULL,
+  FOREIGN KEY (maintenance_window_id) REFERENCES maintenance_windows(id) ON DELETE SET NULL,
+  INDEX idx_timestamp (timestamp),
+  INDEX idx_status    (status)
+);

@@ -11,6 +11,15 @@ const { csrfProtection } = require('../../middleware/csrf');
 // All admin routes require Admin role
 router.get('/users',       authenticate, authorize('Admin'), controller.listUsers);
 router.get('/dashboard',   authenticate, authorize('Admin'), controller.getDashboard);
+router.get('/uptime',      authenticate, authorize('Admin'), controller.getUptimeStats);
+router.get('/maintenance', authenticate, authorize('Admin'), controller.getMaintenanceWindows);
+
+router.post('/maintenance',
+  csrfProtection,
+  authenticate,
+  authorize('Admin'),
+  controller.createMaintenanceWindow
+);
 
 router.post('/users',
   csrfProtection,
