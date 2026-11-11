@@ -50,7 +50,7 @@
     <div id="timer" role="timer" aria-label="Time remaining" aria-live="polite">--:--</div>
   </header>
 
-  <div class="exam-layout">
+  <main class="exam-layout">
     <section class="question-area" aria-label="Question">
       <p class="question-num" id="question-num"></p>
       <p class="question-text" id="question-text"></p>
@@ -67,7 +67,7 @@
       <h3>Questions</h3>
       <div class="q-nav" id="q-nav" role="list"></div>
     </aside>
-  </div>
+  </main>
 
   <!-- Submit confirmation modal -->
   <div id="submit-confirm" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
@@ -75,8 +75,8 @@
       <h2 id="confirm-title">Submit Exam?</h2>
       <p>Once submitted, you cannot change your answers.</p>
       <div class="modal-btns">
-        <button class="btn btn-secondary" id="cancel-submit">Cancel</button>
-        <button class="btn btn-danger" id="confirm-submit">Submit</button>
+        <button class="btn btn-secondary" id="cancel-submit" aria-label="Cancel submit modal">Cancel</button>
+        <button class="btn btn-danger" id="confirm-submit" aria-label="Confirm submit exam">Submit</button>
       </div>
     </div>
   </div>

@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,72 +6,305 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin Dashboard — Online Exam Portal</title>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, sans-serif; background: #f0f4f8; color: #1a202c; }
-    header { background: #c53030; color: #fff; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f0f4f8;
+      color: #1a202c;
+    }
+
+    header {
+      background: #c53030;
+      color: #fff;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+
     header h1 { font-size: 1.2rem; }
-    .logout-btn { background: transparent; border: 1px solid #fff; color: #fff; padding: 0.4rem 0.9rem; border-radius: 5px; cursor: pointer; font-size: 0.9rem; }
-    main { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
-    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
-    .stat-card { background: #fff; border-radius: 8px; padding: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.07); text-align: center; }
-    .stat-card .num { font-size: 2rem; font-weight: 700; color: #3182ce; }
-    .stat-card .lbl { font-size: 0.85rem; color: #718096; margin-top: 0.25rem; }
-    .section { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 1.5rem; margin-bottom: 2rem; }
-    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-    h2 { font-size: 1.1rem; color: #2d3748; }
-    .filters { display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
-    input[type=text], select { padding: 0.5rem 0.75rem; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 0.9rem; }
-    input[type=text]:focus, select:focus { outline: 2px solid #4299e1; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-    th, td { text-align: left; padding: 0.6rem 0.75rem; border-bottom: 1px solid #e2e8f0; }
-    th { background: #edf2f7; font-weight: 600; }
-    .btn { padding: 0.4rem 0.8rem; border: none; border-radius: 5px; cursor: pointer; font-size: 0.82rem; font-weight: 600; }
-    .btn-red   { background: #fed7d7; color: #c53030; }
+
+    .logout-btn {
+      background: transparent;
+      border: 1px solid #fff;
+      color: #fff;
+      padding: 0.4rem 0.9rem;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 1.25rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      text-align: center;
+    }
+
+    .stat-card .num {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #3182ce;
+    }
+
+    .stat-card .lbl {
+      font-size: 0.85rem;
+      color: #718096;
+      margin-top: 0.25rem;
+    }
+
+    .section {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    h2 {
+      font-size: 1.1rem;
+      color: #2d3748;
+    }
+
+    .filters {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    input, select {
+      padding: 0.55rem 0.75rem;
+      border: 1px solid #cbd5e0;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      max-width: 100%;
+    }
+
+    input[type="text"] { min-width: 220px; }
+
+    input:focus, select:focus, button:focus-visible {
+      outline: 2px solid #4299e1;
+      outline-offset: 2px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    th {
+      background: #edf2f7;
+      font-weight: 600;
+    }
+
+    .btn {
+      padding: 0.4rem 0.8rem;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-red { background: #fed7d7; color: #c53030; }
     .btn-green { background: #c6f6d5; color: #276749; }
-    .btn-blue  { background: #bee3f8; color: #2c5282; }
-    .btn-add   { background: #3182ce; color: #fff; padding: 0.5rem 1rem; font-size: 0.9rem; }
+    .btn-blue { background: #bee3f8; color: #2c5282; }
+    .btn-add { background: #3182ce; color: #fff; padding: 0.5rem 1rem; font-size: 0.9rem; }
     .btn:hover { opacity: 0.85; }
-    .btn:focus { outline: 2px solid #2b6cb0; outline-offset: 2px; }
-    .badge { display: inline-block; padding: 0.2rem 0.55rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
-    .badge-active   { background: #c6f6d5; color: #276749; }
+
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.55rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge-active { background: #c6f6d5; color: #276749; }
     .badge-inactive { background: #fed7d7; color: #c53030; }
     .empty { color: #a0aec0; text-align: center; padding: 1.5rem 0; }
+
+    .actions {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+
+    /* Add User dialog */
+    dialog {
+      width: min(460px, calc(100% - 2rem));
+      margin: auto;
+      border: none;
+      border-radius: 10px;
+      padding: 0;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+    }
+
+    dialog::backdrop { background: rgba(0,0,0,0.5); }
+
+    .dialog-content { padding: 1.5rem; }
+
+    .dialog-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .close-btn {
+      border: none;
+      background: transparent;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #4a5568;
+    }
+
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-field label { font-size: 0.9rem; font-weight: 600; }
+
+    .form-field input, .form-field select { width: 100%; }
+
+    .form-error {
+      color: #c53030;
+      font-size: 0.88rem;
+      margin-bottom: 1rem;
+      overflow-wrap: anywhere;
+    }
+
+    .form-success {
+      color: #276749;
+      font-size: 0.88rem;
+      margin-bottom: 1rem;
+    }
+
+    .dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      margin-top: 1.25rem;
+    }
+
+    @media (max-width: 700px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      header { padding: 1rem; }
+      main { padding: 0 0.5rem; }
+      .section { padding: 1rem; }
+      .section-header { align-items: flex-start; }
+      table { display: block; overflow-x: auto; }
+    }
+
+    @media (max-width: 420px) {
+      .stats { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+      .stat-card { padding: 0.75rem; }
+      .stat-card .num { font-size: 1.5rem; }
+      input[type="text"] { min-width: 0; width: 100%; }
+    }
   </style>
 </head>
 <body>
   <header>
     <h1>Online Exam Portal — Admin Dashboard</h1>
-    <button class="logout-btn" id="logout-btn" aria-label="Log out">Log Out</button>
+    <button class="logout-btn" id="logout-btn" type="button">Log Out</button>
   </header>
 
   <main>
-    <!-- System Health Stats -->
     <section aria-label="System health statistics">
       <div class="stats">
-        <div class="stat-card"><div class="num" id="stat-students">—</div><div class="lbl">Students</div></div>
-        <div class="stat-card"><div class="num" id="stat-teachers">—</div><div class="lbl">Teachers</div></div>
-        <div class="stat-card"><div class="num" id="stat-active-exams">—</div><div class="lbl">Active Exam Sessions</div></div>
-        <div class="stat-card"><div class="num" id="stat-uptime">—</div><div class="lbl">Server Uptime (s)</div></div>
+        <div class="stat-card">
+          <div class="num" id="stat-students">—</div>
+          <div class="lbl">Students</div>
+        </div>
+        <div class="stat-card">
+          <div class="num" id="stat-teachers">—</div>
+          <div class="lbl">Teachers</div>
+        </div>
+        <div class="stat-card">
+          <div class="num" id="stat-active-exams">—</div>
+          <div class="lbl">Active Exam Sessions</div>
+        </div>
+        <div class="stat-card">
+          <div class="num" id="stat-uptime">—</div>
+          <div class="lbl">Server Uptime (s)</div>
+        </div>
       </div>
     </section>
 
-    <!-- Active Exams Monitor -->
     <section class="section" aria-labelledby="active-exams-heading">
       <h2 id="active-exams-heading">Active Exams Monitor</h2>
       <table aria-label="Currently active exams">
-        <thead><tr><th>Exam ID</th><th>Title</th><th>Students Taking</th></tr></thead>
-        <tbody id="active-exams-tbody"><tr><td colspan="3" class="empty">Loading...</td></tr></tbody>
+        <thead>
+          <tr>
+            <th>Exam ID</th>
+            <th>Title</th>
+            <th>Students Taking</th>
+          </tr>
+        </thead>
+        <tbody id="active-exams-tbody">
+          <tr><td colspan="3" class="empty">Loading...</td></tr>
+        </tbody>
       </table>
     </section>
 
-    <!-- User Management -->
     <section class="section" aria-labelledby="users-heading">
       <div class="section-header">
         <h2 id="users-heading">User Management</h2>
-        <button class="btn btn-add" id="add-user-btn" aria-label="Add new user">+ Add User</button>
+        <button class="btn btn-add" id="add-user-btn" type="button">
+          + Add User
+        </button>
       </div>
+
       <div class="filters">
-        <input type="text" id="search-input" placeholder="Search name or email..." aria-label="Search users" />
+        <input type="text" id="search-input"
+               placeholder="Search name or email..."
+               aria-label="Search users" />
         <select id="role-filter" aria-label="Filter by role">
           <option value="">All Roles</option>
           <option value="Student">Student</option>
@@ -78,111 +312,411 @@
           <option value="Admin">Admin</option>
         </select>
       </div>
+
       <table aria-label="Users list">
-        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
-        <tbody id="users-tbody"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="users-tbody">
+          <tr><td colspan="5" class="empty">Loading...</td></tr>
+        </tbody>
       </table>
     </section>
   </main>
 
+  <dialog id="add-user-dialog" aria-labelledby="add-user-title">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <h2 id="add-user-title">Create User</h2>
+        <button class="close-btn" id="close-dialog-btn"
+                type="button" aria-label="Close dialog">&times;</button>
+      </div>
+
+      <form id="add-user-form">
+        <div class="form-field">
+          <label for="new-full-name">Full name</label>
+          <input id="new-full-name" name="fullName"
+                 type="text" autocomplete="name" required maxlength="150" />
+        </div>
+
+        <div class="form-field">
+          <label for="new-email">Email</label>
+          <input id="new-email" name="email"
+                 type="email" autocomplete="email" required maxlength="254" />
+        </div>
+
+        <div class="form-field">
+          <label for="new-password">Password</label>
+          <input id="new-password" name="password"
+                 type="password" autocomplete="new-password"
+                 minlength="8" required />
+          <small>Must contain at least 8 characters.</small>
+        </div>
+
+        <div class="form-field">
+          <label for="new-role">Role</label>
+          <select id="new-role" name="role" required>
+            <option value="Student">Student</option>
+            <option value="Teacher">Teacher</option>
+            <option value="Admin">Admin</option>
+          </select>
+        </div>
+
+        <p id="add-user-message" role="status" aria-live="polite"></p>
+
+        <div class="dialog-actions">
+          <button class="btn btn-blue" id="cancel-dialog-btn"
+                  type="button">Cancel</button>
+          <button class="btn btn-add" id="save-user-btn"
+                  type="submit">Create User</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
   <script>
+    const addUserDialog = document.getElementById('add-user-dialog');
+    const addUserForm = document.getElementById('add-user-form');
+    const addUserMessage = document.getElementById('add-user-message');
+    const saveUserButton = document.getElementById('save-user-btn');
+
+    let searchDebounce;
+
+    async function readResponse(res) {
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const message =
+          data.message ||
+          data.error?.message ||
+          data.error ||
+          `Request failed (${res.status}).`;
+
+        throw new Error(typeof message === 'string' ? message : 'Request failed.');
+      }
+
+      return data;
+    }
+
     async function getCsrfToken() {
-      const res = await fetch('/api/auth/csrf-token', { credentials: 'include' });
-      return (await res.json()).csrfToken;
+      const res = await fetch('/api/auth/csrf-token', {
+        credentials: 'include'
+      });
+      const data = await readResponse(res);
+
+      if (!data.csrfToken) {
+        throw new Error('Could not obtain a CSRF token. Please log in again.');
+      }
+
+      return data.csrfToken;
+    }
+
+    async function apiFetch(url, options = {}) {
+      const res = await fetch(url, {
+        ...options,
+        credentials: 'include'
+      });
+
+      return readResponse(res);
     }
 
     async function loadDashboard() {
-      const res = await fetch('/api/admin/dashboard', { credentials: 'include' });
-      if (res.status === 401) { window.location.href = '/index.html'; return; }
-      const data = await res.json();
+      try {
+        const data = await apiFetch('/api/admin/dashboard');
 
-      document.getElementById('stat-students').textContent = data.userCounts?.students ?? 0;
-      document.getElementById('stat-teachers').textContent = data.userCounts?.teachers ?? 0;
-      document.getElementById('stat-active-exams').textContent = data.activeExamCount ?? 0;
-      document.getElementById('stat-uptime').textContent = Math.floor(data.systemHealth?.uptime ?? 0);
+        document.getElementById('stat-students').textContent =
+          data.userCounts?.students ?? 0;
+        document.getElementById('stat-teachers').textContent =
+          data.userCounts?.teachers ?? 0;
+        document.getElementById('stat-active-exams').textContent =
+          data.activeExamCount ?? 0;
+        document.getElementById('stat-uptime').textContent =
+          Math.floor(data.systemHealth?.uptime ?? 0);
 
-      const tbody = document.getElementById('active-exams-tbody');
-      if (!data.activeExams?.length) {
-        tbody.innerHTML = '<tr><td colspan="3" class="empty">No active exam sessions.</td></tr>';
-      } else {
-        tbody.innerHTML = data.activeExams.map(e =>
-          `<tr><td>${e.id}</td><td>${e.title}</td><td>${e.students_currently_taking}</td></tr>`
-        ).join('');
+        const tbody = document.getElementById('active-exams-tbody');
+        tbody.replaceChildren();
+
+        if (!data.activeExams?.length) {
+          const row = tbody.insertRow();
+          const cell = row.insertCell();
+          cell.colSpan = 3;
+          cell.className = 'empty';
+          cell.textContent = 'No active exam sessions.';
+          return;
+        }
+
+        data.activeExams.forEach(exam => {
+          const row = tbody.insertRow();
+          row.insertCell().textContent = exam.id;
+          row.insertCell().textContent = exam.title ?? '';
+          row.insertCell().textContent =
+            exam.students_currently_taking ?? 0;
+        });
+      } catch (err) {
+        if (err.message.includes('401')) {
+          window.location.href = '/index.html';
+          return;
+        }
+        console.error('Dashboard loading failed:', err);
       }
     }
 
     async function loadUsers() {
-      const search = document.getElementById('search-input').value;
+      const search = document.getElementById('search-input').value.trim();
       const role = document.getElementById('role-filter').value;
-      let url = '/api/admin/users?';
-      if (search) url += `search=${encodeURIComponent(search)}&`;
-      if (role)   url += `role=${encodeURIComponent(role)}`;
 
-      const res = await fetch(url, { credentials: 'include' });
-      const data = await res.json();
+      const params = new URLSearchParams();
+      if (search) params.set('search', search);
+      if (role) params.set('role', role);
+
       const tbody = document.getElementById('users-tbody');
+      tbody.replaceChildren();
 
-      if (!data.users?.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty">No users found.</td></tr>';
-        return;
+      const loadingRow = tbody.insertRow();
+      const loadingCell = loadingRow.insertCell();
+      loadingCell.colSpan = 5;
+      loadingCell.className = 'empty';
+      loadingCell.textContent = 'Loading...';
+
+      try {
+        const data = await apiFetch(
+          '/api/admin/users?' + params.toString()
+        );
+
+        tbody.replaceChildren();
+
+        if (!data.users?.length) {
+          const row = tbody.insertRow();
+          const cell = row.insertCell();
+          cell.colSpan = 5;
+          cell.className = 'empty';
+          cell.textContent = 'No users found.';
+          return;
+        }
+
+        data.users.forEach(user => {
+          const row = tbody.insertRow();
+          row.insertCell().textContent = user.full_name ?? '';
+          row.insertCell().textContent = user.email ?? '';
+          row.insertCell().textContent = user.role ?? '';
+
+          const statusCell = row.insertCell();
+          const badge = document.createElement('span');
+          badge.className = 'badge ' +
+            (user.is_active ? 'badge-active' : 'badge-inactive');
+          badge.textContent = user.is_active ? 'Active' : 'Inactive';
+          statusCell.appendChild(badge);
+
+          const actionsCell = row.insertCell();
+          const actions = document.createElement('div');
+          actions.className = 'actions';
+
+          const toggleButton = document.createElement('button');
+          toggleButton.type = 'button';
+          toggleButton.className = 'btn ' +
+            (user.is_active ? 'btn-red' : 'btn-green');
+          toggleButton.textContent =
+            user.is_active ? 'Deactivate' : 'Activate';
+          toggleButton.setAttribute('aria-label',
+            `${toggleButton.textContent} ${user.full_name ?? 'user'}`);
+          toggleButton.addEventListener('click', () =>
+            toggleUser(user.id, user.is_active)
+          );
+
+          const deleteButton = document.createElement('button');
+          deleteButton.type = 'button';
+          deleteButton.className = 'btn btn-red';
+          deleteButton.textContent = 'Delete';
+          deleteButton.setAttribute('aria-label',
+            `Delete ${user.full_name ?? 'user'}`);
+          deleteButton.addEventListener('click', () =>
+            deleteUser(user.id, user.full_name ?? 'this user')
+          );
+
+          actions.append(toggleButton, deleteButton);
+          actionsCell.appendChild(actions);
+        });
+      } catch (err) {
+        tbody.replaceChildren();
+        const row = tbody.insertRow();
+        const cell = row.insertCell();
+        cell.colSpan = 5;
+        cell.className = 'empty';
+        cell.textContent = 'Could not load users. Please refresh the page.';
+        console.error('User loading failed:', err);
       }
-
-      tbody.innerHTML = data.users.map(u =>
-        `<tr>
-          <td>${u.full_name}</td>
-          <td>${u.email}</td>
-          <td>${u.role}</td>
-          <td><span class="badge ${u.is_active ? 'badge-active' : 'badge-inactive'}">${u.is_active ? 'Active' : 'Inactive'}</span></td>
-          <td style="display:flex;gap:0.4rem">
-            <button class="btn ${u.is_active ? 'btn-red' : 'btn-green'}"
-              onclick="toggleUser(${u.id}, ${u.is_active})"
-              aria-label="${u.is_active ? 'Deactivate' : 'Activate'} ${u.full_name}">
-              ${u.is_active ? 'Deactivate' : 'Activate'}
-            </button>
-            <button class="btn btn-red" onclick="deleteUser(${u.id}, '${u.full_name}')" aria-label="Delete ${u.full_name}">Delete</button>
-          </td>
-        </tr>`
-      ).join('');
     }
 
     async function toggleUser(id, currentActive) {
-      const csrfToken = await getCsrfToken();
-      const res = await fetch(`/api/admin/users/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-        credentials: 'include',
-        body: JSON.stringify({ isActive: !currentActive }),
-      });
-      const data = await res.json();
-      alert(res.ok ? data.message : data.error?.message);
-      if (res.ok) loadUsers();
+      if (!confirm(`${currentActive ? 'Deactivate' : 'Activate'} this user?`)) {
+        return;
+      }
+
+      try {
+        const csrfToken = await getCsrfToken();
+
+        const data = await apiFetch(`/api/admin/users/${id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
+          },
+          body: JSON.stringify({ isActive: !currentActive })
+        });
+
+        alert(data.message || 'User status updated.');
+        await loadUsers();
+        await loadDashboard();
+      } catch (err) {
+        alert(err.message || 'Could not update the user.');
+      }
     }
 
     async function deleteUser(id, name) {
-      if (!confirm(`Delete user "${name}"? This cannot be undone.`)) return;
-      const csrfToken = await getCsrfToken();
-      const res = await fetch(`/api/admin/users/${id}`, {
-        method: 'DELETE',
-        headers: { 'X-CSRF-Token': csrfToken },
-        credentials: 'include',
-      });
-      const data = await res.json();
-      alert(res.ok ? data.message : data.error?.message);
-      if (res.ok) loadUsers();
+      if (!confirm(`Delete user "${name}"? This cannot be undone.`)) {
+        return;
+      }
+
+      try {
+        const csrfToken = await getCsrfToken();
+
+        const data = await apiFetch(`/api/admin/users/${id}`, {
+          method: 'DELETE',
+          headers: { 'X-CSRF-Token': csrfToken }
+        });
+
+        alert(data.message || 'User deleted.');
+        await loadUsers();
+        await loadDashboard();
+      } catch (err) {
+        alert(err.message || 'Could not delete the user.');
+      }
     }
 
-    document.getElementById('search-input').addEventListener('input', loadUsers);
-    document.getElementById('role-filter').addEventListener('change', loadUsers);
-    document.getElementById('logout-btn').addEventListener('click', async () => {
-      const csrfToken = await getCsrfToken();
-      await fetch('/api/auth/logout', { method: 'POST', headers: { 'X-CSRF-Token': csrfToken }, credentials: 'include' });
-      window.location.href = '/index.html';
+    function openAddUserDialog() {
+      addUserForm.reset();
+      addUserMessage.textContent = '';
+      addUserMessage.className = '';
+      addUserDialog.showModal();
+      document.getElementById('new-full-name').focus();
+    }
+
+    function closeAddUserDialog() {
+      if (!saveUserButton.disabled) {
+        addUserDialog.close();
+      }
+    }
+
+    document.getElementById('add-user-btn').addEventListener(
+      'click', openAddUserDialog
+    );
+
+    document.getElementById('close-dialog-btn').addEventListener(
+      'click', closeAddUserDialog
+    );
+
+    document.getElementById('cancel-dialog-btn').addEventListener(
+      'click', closeAddUserDialog
+    );
+
+    addUserForm.addEventListener('submit', async event => {
+      event.preventDefault();
+
+      if (!addUserForm.reportValidity()) return;
+
+      const fullName =
+        document.getElementById('new-full-name').value.trim();
+      const email =
+        document.getElementById('new-email').value.trim();
+      const password =
+        document.getElementById('new-password').value;
+      const role =
+        document.getElementById('new-role').value;
+
+      if (password.length < 8) {
+        addUserMessage.textContent =
+          'Password must be at least 8 characters long.';
+        addUserMessage.className = 'form-error';
+        return;
+      }
+
+      saveUserButton.disabled = true;
+      saveUserButton.textContent = 'Creating...';
+      addUserMessage.textContent = '';
+      addUserMessage.className = '';
+
+      try {
+        const csrfToken = await getCsrfToken();
+
+        const data = await apiFetch('/api/admin/users', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
+          },
+          body: JSON.stringify({ fullName, email, password, role })
+        });
+
+        addUserMessage.textContent =
+          data.message || 'User created successfully.';
+        addUserMessage.className = 'form-success';
+
+        addUserForm.reset();
+
+        await loadUsers();
+        await loadDashboard();
+
+        // Show success briefly before closing the dialog.
+        window.setTimeout(() => {
+          if (addUserDialog.open) addUserDialog.close();
+          addUserMessage.textContent = '';
+          addUserMessage.className = '';
+        }, 900);
+      } catch (err) {
+        addUserMessage.textContent =
+          err.message || 'Could not create the user. Please try again.';
+        addUserMessage.className = 'form-error';
+      } finally {
+        saveUserButton.disabled = false;
+        saveUserButton.textContent = 'Create User';
+      }
     });
 
-    // Auto-refresh dashboard every 30 seconds (OEP-F-020)
+    document.getElementById('search-input').addEventListener('input', () => {
+      window.clearTimeout(searchDebounce);
+      searchDebounce = window.setTimeout(loadUsers, 250);
+    });
+
+    document.getElementById('role-filter').addEventListener(
+      'change', loadUsers
+    );
+
+    document.getElementById('logout-btn').addEventListener(
+      'click', async () => {
+        try {
+          const csrfToken = await getCsrfToken();
+
+          await apiFetch('/api/auth/logout', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': csrfToken }
+          });
+        } catch (err) {
+          console.error('Logout request failed:', err);
+        } finally {
+          window.location.href = '/index.html';
+        }
+      }
+    );
+
     loadDashboard();
     loadUsers();
-    setInterval(loadDashboard, 30000);
+    window.setInterval(loadDashboard, 30000);
   </script>
 </body>
 </html>

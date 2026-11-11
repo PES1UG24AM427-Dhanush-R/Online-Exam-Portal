@@ -28,16 +28,21 @@ app.use('/api/attempt',   require('./modules/examTaking/examTaking.routes'));
 app.use('/api/grading',   require('./modules/grading/grading.routes'));
 app.use('/api/admin',     require('./modules/admin/admin.routes'));
 
-// ── Health check endpoint (OEP-F-020) ────────────────────────────────────────
+// ── Health check endpoint (OEP-F-020 & OEP-NF-002) ─────────────────────────
 app.get('/api/health', async (req, res) => {
   const pool = require('./config/db');
+  const uptimeService = require('./modules/monitoring/uptime.service');
   try {
     const [rows] = await pool.query(
       `SELECT COUNT(*) AS active_exams FROM attempts WHERE status = 'in_progress'`
     );
+    const summary = await uptimeService.getUptimeSummary();
     res.json({
       status: 'ok',
       uptime: process.uptime(),
+      uptimePercentage: summary.monthlyUptimePercentage,
+      slaTarget: summary.targetSla,
+      slaMet: summary.isSlaMet,
       activeExamSessions: rows[0].active_exams,
       timestamp: new Date().toISOString(),
     });
