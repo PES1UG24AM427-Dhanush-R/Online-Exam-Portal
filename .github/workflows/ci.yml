@@ -1,3 +1,4 @@
+
 name: CI — Online Exam Portal
 
 on:
@@ -26,6 +27,15 @@ jobs:
 
       - name: Check for syntax errors
         run: node --check backend/server.js
+
+      - name: Check syntax of all test files
+        run: |
+          echo "Checking test file syntax..."
+          for file in tests/*.js; do
+            echo "Checking $file"
+            node --check "$file"
+          done
+          echo "All test files passed syntax validation."
 
       - name: Verify all module files exist
         run: |
