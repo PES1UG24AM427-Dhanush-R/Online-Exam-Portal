@@ -1,14 +1,17 @@
+
 /**
  * Automated Verification Test for OEP-F-015: Duplicate Exam Submission Prevention
  *
  * Test Case Traceability: STP TC-Take-04 / SRS OEP-F-015
  *
  * Verifies:
- * 1. Initial submission of an exam attempt succeeds (HTTP 200).
- * 2. Attempt record is transitioned to 'submitted' with a valid submitted_at timestamp.
- * 3. Second submission attempt is rejected with HTTP 409 Conflict (code: ALREADY_SUBMITTED).
- * 4. Re-starting or autosaving a submitted exam attempt returns HTTP 409 Conflict.
- * 5. Original submission answers and total score remain preserved and uncorrupted.
+ * 1. A student can start an exam attempt.
+ * 2. Two simultaneous submission requests cannot both succeed.
+ * 3. Exactly one concurrent submission succeeds (HTTP 200).
+ * 4. The duplicate submission is rejected (HTTP 409 ALREADY_SUBMITTED).
+ * 5. The attempt is marked as submitted with a valid timestamp.
+ * 6. Restarting or autosaving a submitted attempt is rejected.
+ * 7. Original answers remain preserved and uncorrupted.
  */
 
 require('dotenv').config();
@@ -23,156 +26,354 @@ class SessionClient {
 
   updateCookies(res) {
     let raw = [];
+
     if (typeof res.headers.getSetCookie === 'function') {
       raw = res.headers.getSetCookie();
     } else {
       const h = res.headers.get('set-cookie');
       if (h) raw = [h];
     }
+
     for (const c of raw) {
       const parts = c.split(';')[0].split('=');
+
       if (parts.length >= 2) {
-        this.cookies.set(parts[0].trim(), parts.slice(1).join('=').trim());
+        this.cookies.set(
+          parts[0].trim(),
+          parts.slice(1).join('=').trim()
+        );
       }
     }
   }
 
   getCookieHeader() {
-    return Array.from(this.cookies.entries()).map(([k, v]) => `${k}=${v}`).join('; ');
+    return Array.from(this.cookies.entries())
+      .map(([k, v]) => `${k}=${v}`)
+      .join('; ');
   }
 
   async fetch(url, options = {}) {
     options.headers = options.headers || {};
+
     const cookie = this.getCookieHeader();
-    if (cookie) options.headers['Cookie'] = cookie;
+
+    if (cookie) {
+      options.headers['Cookie'] = cookie;
+    }
+
     const res = await fetch(url, options);
     this.updateCookies(res);
+
     return res;
   }
 }
 
 async function run() {
-  console.log('=== Starting Test: OEP-F-015 (TC-Take-04 Duplicate Submission Prevention) ===\n');
+  console.log(
+    '=== Starting Test: OEP-F-015 (Duplicate Submission Prevention) ===\n'
+  );
+
   const client = new SessionClient();
 
   try {
     // 1. Reset Exam 2 window and attempt state for student 3
+    console.log('[1] Preparing test exam and database state...');
+
     const now = new Date();
     const start = new Date(now.getTime() - 10 * 60 * 1000);
     const end = new Date(now.getTime() + 50 * 60 * 1000);
+
     await pool.query(
       "UPDATE exams SET status = 'published', start_datetime = ?, end_datetime = ?, duration_minutes = 60 WHERE id = 2",
       [start, end]
     );
 
-    await pool.query('DELETE FROM answers WHERE attempt_id IN (SELECT id FROM attempts WHERE student_id = 3 AND exam_id = 2)');
-    await pool.query('DELETE FROM attempts WHERE student_id = 3 AND exam_id = 2');
+    await pool.query(
+      'DELETE FROM answers WHERE attempt_id IN (SELECT id FROM attempts WHERE student_id = 3 AND exam_id = 2)'
+    );
 
-    // 2. Fetch CSRF token & Login
-    const csrfRes = await client.fetch(`${BASE_URL}/api/auth/csrf-token`);
+    await pool.query(
+      'DELETE FROM attempts WHERE student_id = 3 AND exam_id = 2'
+    );
+
+    // 2. Fetch CSRF token and log in
+    console.log('[2] Logging in as test student...');
+
+    const csrfRes = await client.fetch(
+      `${BASE_URL}/api/auth/csrf-token`
+    );
+
     const csrfData = await csrfRes.json();
     let csrfToken = csrfData.csrfToken;
 
-    const loginRes = await client.fetch(`${BASE_URL}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-      body: JSON.stringify({ email: 'student@test.com', password: 'Student@123' }),
-    });
-    if (!loginRes.ok) throw new Error(`Login failed: ${loginRes.status}`);
+    const loginRes = await client.fetch(
+      `${BASE_URL}/api/auth/login`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({
+          email: 'student@test.com',
+          password: 'Student@123'
+        })
+      }
+    );
 
-    const csrfRes2 = await client.fetch(`${BASE_URL}/api/auth/csrf-token`);
+    if (!loginRes.ok) {
+      throw new Error(`Login failed: ${loginRes.status}`);
+    }
+
+    const csrfRes2 = await client.fetch(
+      `${BASE_URL}/api/auth/csrf-token`
+    );
+
     const csrfData2 = await csrfRes2.json();
     csrfToken = csrfData2.csrfToken;
 
-    // 3. Start attempt
-    const startRes = await client.fetch(`${BASE_URL}/api/attempt/start`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-      body: JSON.stringify({ examId: 2 }),
-    });
-    const startData = await startRes.json();
-    if (!startRes.ok) throw new Error(`Start attempt failed: ${JSON.stringify(startData)}`);
-    const attemptId = startData.attemptId;
-    console.log(`[1] Started attempt #${attemptId}`);
+    console.log('[3] Student login successful.');
 
-    // 4. Submit attempt (First submission)
+    // 3. Start exam attempt
+    console.log('[4] Starting exam attempt...');
+
+    const startRes = await client.fetch(
+      `${BASE_URL}/api/attempt/start`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({ examId: 2 })
+      }
+    );
+
+    const startData = await startRes.json();
+
+    if (!startRes.ok) {
+      throw new Error(
+        `Start attempt failed: ${JSON.stringify(startData)}`
+      );
+    }
+
+    const attemptId = startData.attemptId;
+
+    console.log(`[5] Started attempt #${attemptId}`);
+
+    // 4. Send two simultaneous submission requests
+    console.log(
+      '[6] Sending two simultaneous submission requests...'
+    );
+
     const answers = [
       { questionId: 1, response: 'Option A' },
-      { questionId: 2, response: 'True' },
+      { questionId: 2, response: 'True' }
     ];
 
-    const submitRes1 = await client.fetch(`${BASE_URL}/api/attempt/${attemptId}/submit`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-      body: JSON.stringify({ answers }),
-    });
+    const concurrentSubmissions = await Promise.all([
+      client.fetch(
+        `${BASE_URL}/api/attempt/${attemptId}/submit`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
+          },
+          body: JSON.stringify({ answers })
+        }
+      ),
 
-    const submitData1 = await submitRes1.json();
-    console.log('[2] First submission response status:', submitRes1.status, submitData1.message);
-    if (submitRes1.status !== 200) {
-      throw new Error(`Expected first submission to return 200, got ${submitRes1.status}: ${JSON.stringify(submitData1)}`);
+      client.fetch(
+        `${BASE_URL}/api/attempt/${attemptId}/submit`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
+          },
+          body: JSON.stringify({ answers })
+        }
+      )
+    ]);
+
+    const concurrentBodies = await Promise.all(
+      concurrentSubmissions.map(res => res.json())
+    );
+
+    const successCount = concurrentSubmissions.filter(
+      res => res.status === 200
+    ).length;
+
+    const conflictCount = concurrentSubmissions.filter(
+      res => res.status === 409
+    ).length;
+
+    console.log(
+      '[7] Concurrent submission response statuses:',
+      concurrentSubmissions.map(res => res.status)
+    );
+
+    // Exactly one request must succeed and one must be rejected
+    if (successCount !== 1 || conflictCount !== 1) {
+      throw new Error(
+        `Expected exactly one HTTP 200 and one HTTP 409. Got ${successCount} successful and ${conflictCount} conflicting responses.`
+      );
     }
 
-    // Verify DB state
-    const [attempts1] = await pool.query('SELECT status, submitted_at FROM attempts WHERE id = ?', [attemptId]);
-    if (attempts1[0].status !== 'submitted' || !attempts1[0].submitted_at) {
-      throw new Error(`Attempt was not marked submitted in database! ${JSON.stringify(attempts1[0])}`);
-    }
-    console.log('[3] Verified DB attempt status is "submitted" with timestamp:', attempts1[0].submitted_at);
+    // Verify the rejected request returned the correct error
+    const conflictIndex = concurrentSubmissions.findIndex(
+      res => res.status === 409
+    );
 
-    // 5. Submit attempt AGAIN (Second submission)
-    console.log('[4] Testing duplicate submission...');
-    const submitRes2 = await client.fetch(`${BASE_URL}/api/attempt/${attemptId}/submit`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-      body: JSON.stringify({ answers: [{ questionId: 1, response: 'Option B' }] }),
-    });
+    const conflictData = concurrentBodies[conflictIndex];
 
-    const submitData2 = await submitRes2.json();
-    console.log('[5] Second submission response status:', submitRes2.status, submitData2.error?.code);
-
-    if (submitRes2.status !== 409) {
-      throw new Error(`Expected second submission to return 409 Conflict, got ${submitRes2.status}: ${JSON.stringify(submitData2)}`);
-    }
-    if (submitData2.error?.code !== 'ALREADY_SUBMITTED') {
-      throw new Error(`Expected error code ALREADY_SUBMITTED, got ${submitData2.error?.code}`);
+    if (conflictData.error?.code !== 'ALREADY_SUBMITTED') {
+      throw new Error(
+        `Expected ALREADY_SUBMITTED, got ${conflictData.error?.code}`
+      );
     }
 
-    // 6. Test restarting submitted exam
-    console.log('[6] Testing restart attempt on submitted exam...');
-    const startRes2 = await client.fetch(`${BASE_URL}/api/attempt/start`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-      body: JSON.stringify({ examId: 2 }),
-    });
+    console.log(
+      '[8] Concurrent submission protection passed: one request succeeded and the duplicate was rejected.'
+    );
+
+    // 5. Verify database state
+    console.log('[9] Verifying submitted attempt in database...');
+
+    const [attempts] = await pool.query(
+      'SELECT status, submitted_at, total_score FROM attempts WHERE id = ?',
+      [attemptId]
+    );
+
+    if (
+      attempts.length === 0 ||
+      attempts[0].status !== 'submitted' ||
+      !attempts[0].submitted_at
+    ) {
+      throw new Error(
+        `Attempt was not correctly marked submitted: ${JSON.stringify(attempts[0])}`
+      );
+    }
+
+    const originalScore = attempts[0].total_score;
+
+    console.log(
+      '[10] Database confirms submitted status and timestamp:',
+      attempts[0].submitted_at
+    );
+
+    // 6. Test restarting a submitted exam
+    console.log('[11] Testing restart of submitted exam...');
+
+    const startRes2 = await client.fetch(
+      `${BASE_URL}/api/attempt/start`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({ examId: 2 })
+      }
+    );
+
     const startData2 = await startRes2.json();
-    console.log('[7] Restart submitted exam response status:', startRes2.status, startData2.error?.code);
-    if (startRes2.status !== 409 || startData2.error?.code !== 'ALREADY_SUBMITTED') {
-      throw new Error(`Expected 409 ALREADY_SUBMITTED on restarting submitted exam, got ${startRes2.status}`);
+
+    console.log(
+      '[12] Restart response:',
+      startRes2.status,
+      startData2.error?.code
+    );
+
+    if (
+      startRes2.status !== 409 ||
+      startData2.error?.code !== 'ALREADY_SUBMITTED'
+    ) {
+      throw new Error(
+        `Expected 409 ALREADY_SUBMITTED on restart, got ${startRes2.status}`
+      );
     }
 
-    // 7. Test autosave on submitted attempt
-    console.log('[8] Testing autosave on submitted exam attempt...');
-    const autosaveRes2 = await client.fetch(`${BASE_URL}/api/attempt/${attemptId}/autosave`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-      body: JSON.stringify({ answers: [{ questionId: 1, response: 'Tampered Answer' }] }),
-    });
-    const autosaveData2 = await autosaveRes2.json();
-    console.log('[9] Autosave on submitted exam status:', autosaveRes2.status, autosaveData2.error?.code);
-    if (autosaveRes2.status !== 409 || autosaveData2.error?.code !== 'ALREADY_SUBMITTED') {
-      throw new Error(`Expected 409 ALREADY_SUBMITTED on autosaving submitted exam, got ${autosaveRes2.status}`);
+    // 7. Test autosaving a submitted attempt
+    console.log('[13] Testing autosave on submitted exam...');
+
+    const autosaveRes = await client.fetch(
+      `${BASE_URL}/api/attempt/${attemptId}/autosave`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({
+          answers: [
+            { questionId: 1, response: 'Tampered Answer' }
+          ]
+        })
+      }
+    );
+
+    const autosaveData = await autosaveRes.json();
+
+    console.log(
+      '[14] Autosave response:',
+      autosaveRes.status,
+      autosaveData.error?.code
+    );
+
+    if (
+      autosaveRes.status !== 409 ||
+      autosaveData.error?.code !== 'ALREADY_SUBMITTED'
+    ) {
+      throw new Error(
+        `Expected 409 ALREADY_SUBMITTED on autosave, got ${autosaveRes.status}`
+      );
     }
 
-    // 8. Verify initial answers are still preserved and untampered
-    const [preservedAnswers] = await pool.query('SELECT question_id, response FROM answers WHERE attempt_id = ? ORDER BY question_id ASC', [attemptId]);
-    console.log('[10] Preserved original answers in DB:', preservedAnswers);
-    if (preservedAnswers[0].response !== 'Option A' || preservedAnswers[1].response !== 'True') {
-      throw new Error('Original answers were overwritten or corrupted!');
+    // 8. Verify original answers remain unchanged
+    console.log('[15] Verifying original answers...');
+
+    const [preservedAnswers] = await pool.query(
+      'SELECT question_id, response FROM answers WHERE attempt_id = ? ORDER BY question_id ASC',
+      [attemptId]
+    );
+
+    console.log(
+      '[16] Preserved answers:',
+      preservedAnswers
+    );
+
+    if (
+      preservedAnswers.length !== 2 ||
+      preservedAnswers[0].response !== 'Option A' ||
+      preservedAnswers[1].response !== 'True'
+    ) {
+      throw new Error(
+        'Original answers were overwritten, deleted, or corrupted!'
+      );
     }
 
-    console.log('\n>>> SUCCESS: TC-Take-04 / OEP-F-015 PASSED! Duplicate submission prevented.\n');
+    // 9. Verify score was not changed by rejected requests
+    const [finalAttempts] = await pool.query(
+      'SELECT total_score FROM attempts WHERE id = ?',
+      [attemptId]
+    );
+
+    if (finalAttempts[0].total_score !== originalScore) {
+      throw new Error(
+        'Total score changed after rejected duplicate requests!'
+      );
+    }
+
+    console.log('[17] Original answers and score remain preserved.');
+
+    console.log(
+      '\n>>> SUCCESS: OEP-F-015 PASSED! Concurrent duplicate submissions were prevented.\n'
+    );
+
     process.exit(0);
+
   } catch (err) {
     console.error('\n>>> TEST FAILED:', err.message);
     process.exit(1);
