@@ -1,31 +1,55 @@
-
 name: CI — Online Exam Portal
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  build:
-    name: Check Server Starts
+  build-and-test:
+    name: Build and Automated Tests
     runs-on: ubuntu-latest
 
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: online_exam_portal
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      NODE_ENV: test
+      PORT: 3000
+      APP_URL: http://localhost:3000
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_NAME: online_exam_portal
+      JWT_SECRET: ci_test_secret_key_at_least_32_characters_long
+      JWT_EXPIRY: 30m
+
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
+          node-version: 18
 
       - name: Install dependencies
         run: npm install
 
-      - name: Check for syntax errors
+      - name: Check backend syntax
         run: node --check backend/server.js
 
       - name: Check syntax of all test files
@@ -37,35 +61,58 @@ jobs:
           done
           echo "All test files passed syntax validation."
 
-      - name: Verify all module files exist
+      - name: Initialize database schema
         run: |
-          echo "Checking backend module files..."
-          test -f backend/modules/auth/auth.routes.js && echo "✓ AuthModule"
-          test -f backend/modules/questionBank/questionBank.routes.js && echo "✓ QuestionBankModule"
-          test -f backend/modules/exam/exam.routes.js && echo "✓ ExamModule"
-          test -f backend/modules/examTaking/examTaking.routes.js && echo "✓ ExamTakingModule"
-          test -f backend/modules/grading/grading.routes.js && echo "✓ GradingModule"
-          test -f backend/modules/admin/admin.routes.js && echo "✓ AdminModule"
-          test -f backend/modules/monitoring/uptime.service.js && echo "✓ MonitoringService"
-          echo "All modules present."
+          mysql -h 127.0.0.1 -uroot -proot \
+            online_exam_portal < backend/database/schema.sql
 
-      - name: Verify frontend pages exist
+      - name: Create CI test Admin account
         run: |
-          echo "Checking frontend pages..."
-          test -f frontend/index.html && echo "✓ Login page"
-          test -f frontend/register.html && echo "✓ Register page"
-          test -f frontend/student/dashboard.html && echo "✓ Student dashboard"
-          test -f frontend/student/exam.html && echo "✓ Exam interface"
-          test -f frontend/teacher/dashboard.html && echo "✓ Teacher dashboard"
-          test -f frontend/teacher/questions.html && echo "✓ Question bank"
-          test -f frontend/teacher/exams.html && echo "✓ Exam creation"
-          test -f frontend/teacher/grading.html && echo "✓ Grading interface"
-          test -f frontend/admin/dashboard.html && echo "✓ Admin dashboard"
-          echo "All pages present."
+          mysql -h 127.0.0.1 -uroot -proot online_exam_portal -e "
+            INSERT INTO users
+              (id, full_name, email, password_hash, role, is_active)
+            VALUES
+              (1, 'CI Test Admin', 'ci-admin@example.com',
+               'ci-placeholder-hash', 'Admin', 1);
+          "
 
-      - name: Run Accessibility & Uptime Automated Test Suites
-        env:
-          NODE_ENV: test
+      - name: Verify database connection
         run: |
-          node tests/test-accessibility-nf005.js
-          node tests/test-uptime-monitoring-nf002.js
+          mysql -h 127.0.0.1 -uroot -proot \
+            -e "SELECT 'MySQL connection successful' AS result;"
+
+      - name: Start backend server
+        run: |
+          nohup node backend/server.js > server.log 2>&1 &
+          echo $! > server.pid
+
+      - name: Wait for backend startup
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://localhost:3000/api/health > /dev/null; then
+              echo "Backend is ready."
+              exit 0
+            fi
+            echo "Waiting for backend... ($i/30)"
+            sleep 2
+          done
+
+          echo "Backend failed to start."
+          cat server.log
+          exit 1
+
+      - name: Run OEP-NF-001 Load Performance Tests
+        run: node tests/test-load-perf-nf001.js
+
+      - name: Run OEP-NF-004 Safe Error Tests
+        run: node tests/test-safe-errors-nf004.js
+
+      - name: Run OEP-NF-005 Accessibility Tests
+        run: node tests/test-accessibility-nf005.js
+
+      - name: Run OEP-NF-002 Uptime Monitoring Tests
+        run: node tests/test-uptime-monitoring-nf002.js
+
+      - name: Display backend logs on failure
+        if: failure()
+        run: cat server.log
