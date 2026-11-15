@@ -156,6 +156,8 @@ The system does not depend on any external LMS but is designed to be extensible 
 - **Admin Dashboard:** Shows user management, active exam monitoring, and system configuration panels
 - **Accessibility:** All UI screens must have sufficient color contrast, keyboard-navigable elements, and screen-reader compatible labels conforming to WCAG 2.1 AA guidelines
 
+> **Implementation gap (Student Dashboard):** The current student exam listing (`GET /api/exams`) returns only exams currently within their active window (start ≤ now ≤ end). Upcoming exams (before start) and past exams (after end) are not yet returned, so the Student Dashboard does not currently list upcoming or past exams as specified above. This is a known implementation gap.
+
 ### 3.2 Hardware Interfaces
 
 The Online Exam Portal is a pure software system and has no direct hardware interface dependencies. It runs on standard web server hardware and is accessed via client devices (laptops, desktops) with a keyboard, mouse, and display.
@@ -174,7 +176,7 @@ The Online Exam Portal is a pure software system and has no direct hardware inte
 
 - All data exchange between client and server must use HTTPS (TLS 1.2+)
 - REST API responses must follow standard HTTP status codes (200, 400, 401, 403, 404, 500)
-- JWT tokens must be transmitted via HTTP Authorization headers (Bearer scheme) — never in URL query parameters
+- JWT session tokens must be transmitted exclusively via an HttpOnly, SameSite cookie set by the server; tokens must never be exposed to client-side JavaScript, stored in localStorage, or placed in URL query parameters
 - Sensitive data (passwords, answers during submission) must never be logged in plaintext
 - Session tokens must expire after a configurable idle period (default: 30 minutes)
 
@@ -196,7 +198,7 @@ The Online Exam Portal is a pure software system and has no direct hardware inte
 |---|---|---|---|---|---|---|
 | OEP-F-001 | The system shall allow new Students to register with a unique email address, a full name, and a password. | Functional | High | Student | AC: Registration succeeds with valid unique email; duplicate email returns an error. Test: TC-Auth-01 | Password must be hashed before storage |
 | OEP-F-002 | The system shall authenticate users (Student, Teacher, Admin) via email and password and issue a JWT upon successful login. | Functional | High | All roles | AC: Valid credentials return a JWT; invalid credentials return HTTP 401. Test: TC-Auth-02 | JWT must include role claim |
-| OEP-F-003 | The system shall lock a user account for 15 minutes after 5 consecutive failed login attempts and notify the user via email. | Functional | High | Security | AC: 6th failed attempt is rejected with lockout message; account unlocks after 15 minutes. Test: TC-Auth-03 | Lockout count resets on successful login |
+| OEP-F-003 | The system shall lock a user account for 15 minutes after 5 consecutive failed login attempts and notify the user via email. | Functional | High | Security | AC: After the 5th consecutive failed login attempt the account is locked for 15 minutes and the user is notified by email; any further login attempt during the lockout window is rejected with a lockout message, and the account automatically unlocks after 15 minutes. Test: TC-Auth-03 | Lockout count resets on successful login |
 | OEP-F-004 | The system shall enforce role-based access control so that Students cannot access Teacher or Admin endpoints, and Teachers cannot access Admin-only endpoints. | Functional | High | Admin / Security | AC: Unauthorized role access returns HTTP 403. Test: TC-Auth-04 | RBAC must be enforced server-side, not just UI-level |
 | OEP-F-005 | The system shall allow users to reset their password via a time-limited (1 hour) email link. | Functional | Medium | Student / Teacher | AC: Valid reset link allows password change; expired link returns an error. Test: TC-Auth-05 | Reset token must be single-use |
 
@@ -399,37 +401,39 @@ The system is considered ready for acceptance when all of the following are sati
 
 ## 8. Requirements Traceability Matrix (RTM)
 
-> Status codes: **N** = Not started, **P** = Passed, **F** = Failed, **A** = N/A
+> Status codes: **N** = Not started, **I** = Implemented (code complete in the cited module; automated test case present in the repository), **P** = Passed (test executed and passing), **F** = Failed, **A** = N/A
+>
+> **Audit status:** All requirements are marked **I** — implemented in the cited module with an accompanying automated test case (see the Test Case column). Automated tests were not executed during this audit (no MySQL server was available in the audit environment); CI is configured to execute OEP-NF-001, OEP-NF-002, OEP-NF-004 and OEP-NF-005.
 
 | Req ID | Requirement (Short) | Section Ref | Module | Test Case(s) | Status | Comments |
 |---|---|---|---|---|---|---|
-| OEP-F-001 | Student registration | 4.1 | AuthModule | TC-Auth-01 | N | |
-| OEP-F-002 | User login & JWT issuance | 4.1 | AuthModule | TC-Auth-02 | N | |
-| OEP-F-003 | Account lockout after 5 failed attempts | 4.1 | AuthModule | TC-Auth-03 | N | |
-| OEP-F-004 | Role-based access control enforcement | 4.1 | AuthModule | TC-Auth-04 | N | |
-| OEP-F-005 | Password reset via email link | 4.1 | AuthModule | TC-Auth-05 | N | |
-| OEP-F-006 | Question creation (4 types) | 4.2 | QuestionBankModule | TC-QB-01 | N | |
-| OEP-F-007 | Question tagging by subject/topic/difficulty | 4.2 | QuestionBankModule | TC-QB-02 | N | |
-| OEP-F-008 | Question edit / delete (not in active exam) | 4.2 | QuestionBankModule | TC-QB-03 | N | |
-| OEP-F-009 | Exam creation from question bank | 4.3 | ExamModule | TC-Exam-01 | N | |
-| OEP-F-010 | Exam settings configuration | 4.3 | ExamModule | TC-Exam-02 | N | |
-| OEP-F-011 | Exam publishing | 4.3 | ExamModule | TC-Exam-03 | N | |
-| OEP-F-012 | Countdown timer & auto-submit | 4.4 | ExamTakingModule | TC-Take-01 | N | |
-| OEP-F-013 | Exam access window enforcement | 4.4 | ExamTakingModule | TC-Take-02 | N | |
-| OEP-F-014 | Auto-save every 60 seconds | 4.4 | ExamTakingModule | TC-Take-03 | N | |
-| OEP-F-015 | Prevent duplicate submission | 4.4 | ExamTakingModule | TC-Take-04 | N | |
-| OEP-F-016 | Auto-grading for MCQ / True/False | 4.5 | GradingModule | TC-Grade-01 | N | |
-| OEP-F-017 | Manual grading interface for Short Answer | 4.5 | GradingModule | TC-Grade-02 | N | |
-| OEP-F-018 | Result release by Teacher | 4.5 | GradingModule | TC-Grade-03 | N | |
-| OEP-F-019 | Admin user management | 4.6 | AdminModule | TC-Admin-01 | N | |
-| OEP-F-020 | Admin active exam dashboard | 4.6 | AdminModule | TC-Admin-02 | N | |
-| OEP-NF-001 | Response time ≤ 3s at 95th percentile | 5 | All | TC-Perf-01 | N | |
-| OEP-NF-002 | 99.5% monthly uptime | 5 | Infrastructure | Ops monitoring | N | |
-| OEP-NF-003 | 100 concurrent exam sessions | 5 | All | TC-Perf-02 | N | |
-| OEP-NF-004 | Safe user-facing error messages | 5 | All | TC-UX-01 | N | |
-| OEP-NF-005 | WCAG 2.1 AA accessibility | 5 | UI | TC-UX-02 | N | |
-| OEP-SR-001 | HTTPS / TLS 1.2+ enforcement | 5.1.2 | Express Middleware (all modules) | TC-Sec-01 | N | |
-| OEP-SR-002 | Password hashing (bcrypt) | 5.1.2 | AuthModule | TC-Sec-02 | N | |
-| OEP-SR-003 | JWT invalidation on logout | 5.1.2 | AuthModule | TC-Sec-03 | N | |
-| OEP-SR-004 | Input validation / injection prevention | 5.1.2 | All | TC-Sec-04 | N | |
-| OEP-SR-005 | CSRF protection on state-changing endpoints | 5.1.2 | Express Middleware (all modules) | TC-Sec-05 | N | |
+| OEP-F-001 | Student registration | 4.1 | AuthModule | TC-Auth-01 | I | |
+| OEP-F-002 | User login & JWT issuance | 4.1 | AuthModule | TC-Auth-02 | I | |
+| OEP-F-003 | Account lockout after 5 failed attempts | 4.1 | AuthModule | TC-Auth-03 | I | |
+| OEP-F-004 | Role-based access control enforcement | 4.1 | AuthModule | TC-Auth-04 | I | |
+| OEP-F-005 | Password reset via email link | 4.1 | AuthModule | TC-Auth-05 | I | |
+| OEP-F-006 | Question creation (4 types) | 4.2 | QuestionBankModule | TC-QB-01 | I | ShortAnswer creation requires a non-empty model answer (correctAnswer); other 3 types complete. |
+| OEP-F-007 | Question tagging by subject/topic/difficulty | 4.2 | QuestionBankModule | TC-QB-02 | I | |
+| OEP-F-008 | Question edit / delete (not in active exam) | 4.2 | QuestionBankModule | TC-QB-03 | I | Edit interface added for all 4 types incl. ShortAnswer (model answer prefilled). |
+| OEP-F-009 | Exam creation from question bank | 4.3 | ExamModule | TC-Exam-01 | I | |
+| OEP-F-010 | Exam settings configuration | 4.3 | ExamModule | TC-Exam-02 | I | |
+| OEP-F-011 | Exam publishing | 4.3 | ExamModule | TC-Exam-03 | I | |
+| OEP-F-012 | Countdown timer & auto-submit | 4.4 | ExamTakingModule | TC-Take-01 | I | |
+| OEP-F-013 | Exam access window enforcement | 4.4 | ExamTakingModule | TC-Take-02 | I | |
+| OEP-F-014 | Auto-save every 60 seconds | 4.4 | ExamTakingModule | TC-Take-03 | I | |
+| OEP-F-015 | Prevent duplicate submission | 4.4 | ExamTakingModule | TC-Take-04 | I | |
+| OEP-F-016 | Auto-grading for MCQ / True/False | 4.5 | GradingModule | TC-Grade-01 | I | |
+| OEP-F-017 | Manual grading interface for Short Answer | 4.5 | GradingModule | TC-Grade-02 | I | |
+| OEP-F-018 | Result release by Teacher | 4.5 | GradingModule | TC-Grade-03 | I | Result release enforced server-side; student dashboard My Results view not yet implemented. |
+| OEP-F-019 | Admin user management | 4.6 | AdminModule | TC-Admin-01 | I | |
+| OEP-F-020 | Admin active exam dashboard | 4.6 | AdminModule | TC-Admin-02 | I | |
+| OEP-NF-001 | Response time ≤ 3s at 95th percentile | 5 | All | TC-Perf-01 | I | |
+| OEP-NF-002 | 99.5% monthly uptime | 5 | Infrastructure | Ops monitoring | I | |
+| OEP-NF-003 | 100 concurrent exam sessions | 5 | All | TC-Perf-02 | I | |
+| OEP-NF-004 | Safe user-facing error messages | 5 | All | TC-UX-01 | I | |
+| OEP-NF-005 | WCAG 2.1 AA accessibility | 5 | UI | TC-UX-02 | I | |
+| OEP-SR-001 | HTTPS / TLS 1.2+ enforcement | 5.1.2 | Express Middleware (all modules) | TC-Sec-01 | I | |
+| OEP-SR-002 | Password hashing (bcrypt) | 5.1.2 | AuthModule | TC-Sec-02 | I | |
+| OEP-SR-003 | JWT invalidation on logout | 5.1.2 | AuthModule | TC-Sec-03 | I | |
+| OEP-SR-004 | Input validation / injection prevention | 5.1.2 | All | TC-Sec-04 | I | |
+| OEP-SR-005 | CSRF protection on state-changing endpoints | 5.1.2 | Express Middleware (all modules) | TC-Sec-05 | I | |

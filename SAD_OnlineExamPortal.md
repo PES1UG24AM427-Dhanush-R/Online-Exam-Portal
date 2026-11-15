@@ -4,7 +4,7 @@
 **Version:** 1.0  
 **Authors:** Sumit Nagaraj Bali 
 **Date:** 29-09-2026  
-**Status:** 
+**Status:** Draft
 
 ---
 
@@ -12,7 +12,7 @@
 
 | Version | Date | Author | Change Summary |
 |---|---|---|---|
-| 1.0 | 29-09-2026 | [Person 2 Name] | Initial SAD draft |
+| 1.0 | 29-09-2026 | Sumit Nagaraj Bali | Initial SAD draft |
 
 ---
 
@@ -157,7 +157,7 @@ The system is structured as a three-tier architecture:
   - **GradingModule** (`<<component>>`) — auto-grading for MCQ/True-False, manual grading interface, result release
   - **AdminModule** (`<<component>>`) — user management, role assignment, active exam monitoring, system health dashboard
 
-The Web Browser communicates with the backend over HTTPS. Authenticated requests include the JWT using the HTTP Authorization header with the Bearer scheme. JWTs are not transmitted through URL query parameters. HTTPS enforcement, JWT validation, RBAC checks, and input validation are handled by Express middleware within the application tier. There is no separate API Gateway component..
+The Web Browser communicates with the backend over HTTPS. Authenticated requests include the JWT in an HttpOnly, SameSite cookie (see ADR-002). JWTs are never transmitted through URL query parameters or exposed to client-side JavaScript. HTTPS enforcement, JWT validation, RBAC checks, and input validation are handled by Express middleware within the application tier. There is no separate API Gateway component..
 
 **Data / External Services Tier:**
 - **MySQL Database** (`<<database>>`) — persistent storage for all data; accessed by all six backend modules via parameterized SQL queries over the internal network only; never exposed directly to the client
@@ -170,7 +170,7 @@ The Web Browser communicates with the backend over HTTPS. Authenticated requests
 > **Note on actors vs. components:** Student, Teacher, and Admin are external users (actors) who interact with the system through the Web Browser. They are not software components and do not appear in the component diagram as components.
 
 | Component | Responsibility | Key Interfaces |
-|| **Web Browser (Client)** | Renders the UI for all three roles (Student, Teacher, Admin). Sends HTTP requests to the backend REST API over HTTPS. Authenticated requests include the JWT using the `Authorization: Bearer <token>` header. JWTs are not transmitted through URL query parameters. | REST API over HTTPS ||
+|| **Web Browser (Client)** | Renders the UI for all three roles (Student, Teacher, Admin). Sends HTTP requests to the backend REST API over HTTPS. Authenticated requests carry the JWT in an HttpOnly, SameSite cookie set on login. JWTs are never transmitted through URL query parameters or exposed to client-side JavaScript. | REST API over HTTPS ||
 | **AuthModule** | Handles user registration, login, JWT generation and validation, RBAC middleware (applied to all protected routes), account lockout, and password reset. HTTPS enforcement, JWT validation, RBAC role checks, and input validation are applied as Express middleware — there is no separate API Gateway component. | `/api/auth/*` endpoints; Email Service |
 | **QuestionBankModule** | Manages the full lifecycle of questions — creation, editing, deletion, tagging by subject/topic/difficulty, and retrieval for exam composition. | `/api/questions/*` endpoints; MySQL Database |
 | **ExamModule** | Allows Teachers to create exams by selecting questions, configure settings (duration, window, shuffle), and publish them. Manages exam state transitions (draft → published → closed). | `/api/exams/*` endpoints; MySQL Database |
@@ -217,7 +217,7 @@ Rationale: JWTs allow the backend to validate identity without a database lookup
 | **Frontend** | HTML5 / CSS3 / JavaScript (or React) | Standard web technologies, accessible from any browser without installation |
 | **Backend** | Node.js with Express.js | Lightweight, widely used, good ecosystem for REST APIs and JWT handling |
 | **Database** | MySQL | Relational model suits structured exam data (questions, attempts, scores); strong ACID guarantees protect submission integrity |
-| **Authentication** | JWT (jsonwebtoken library) + bcrypt for password hashing | Industry standard; bcrypt with cost factor ≥ 10 satisfies OEP-SR-002 |
+| **Authentication** | JWT (jsonwebtoken library) + bcrypt for password hashing | Industry standard; bcrypt with cost factor 12 (satisfies the OEP-SR-002 minimum of 10) |
 | **Email** | Nodemailer (SMTP) or SendGrid API | Handles password reset and notification emails (OEP-F-005) |
 | **Communication** | HTTPS / TLS 1.2+ | Mandatory per OEP-SR-001 |
 | **Version Control** | Git / GitHub | Source control and collaboration |
@@ -381,7 +381,7 @@ No business logic exists in the frontend — the client is purely a rendering la
 ---
 
 **POST /api/auth/login**
-- Description: Authenticate a user and issue a JWT
+- Description: Authenticate a user and set an HttpOnly JWT session cookie
 - Request body:
 ```json
 {
@@ -392,7 +392,6 @@ No business logic exists in the frontend — the client is purely a rendering la
 - Success response — HTTP 200:
 ```json
 {
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "role": "Student",
   "fullName": "string"
 }
@@ -405,7 +404,7 @@ No business logic exists in the frontend — the client is purely a rendering la
 
 **POST /api/auth/logout**
 - Description: Invalidate the current JWT session
-- Headers: `Authorization: Bearer <token>`
+- Cookies: `token` — HttpOnly JWT session cookie (issued by `POST /api/auth/login`)
 - Success response — HTTP 200:
 ```json
 {
@@ -437,7 +436,7 @@ No business logic exists in the frontend — the client is purely a rendering la
 
 **POST /api/attempt/start**
 - Description: Start an exam attempt for the authenticated Student
-- Headers: `Authorization: Bearer <token>`
+- Cookies: `token` — HttpOnly JWT session cookie (issued by `POST /api/auth/login`)
 - Request body:
 ```json
 {
@@ -468,7 +467,7 @@ No business logic exists in the frontend — the client is purely a rendering la
 
 **POST /api/attempt/:attemptId/autosave**
 - Description: Save current answers without submitting
-- Headers: `Authorization: Bearer <token>`
+- Cookies: `token` — HttpOnly JWT session cookie (issued by `POST /api/auth/login`)
 - Request body:
 ```json
 {
@@ -489,7 +488,7 @@ No business logic exists in the frontend — the client is purely a rendering la
 
 **POST /api/attempt/:attemptId/submit**
 - Description: Final submission of all exam answers
-- Headers: `Authorization: Bearer <token>`
+- Cookies: `token` — HttpOnly JWT session cookie (issued by `POST /api/auth/login`)
 - Request body:
 ```json
 {

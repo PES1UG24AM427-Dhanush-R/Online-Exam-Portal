@@ -36,3 +36,7 @@ router.post('/:id/submit',
 );
 
 module.exports = router;
+
+// OEP-F-012: finalize expired attempts server-side even when the student's
+// browser is closed (disabled under NODE_ENV=test). Started once on load.
+require('./expirySweeper').start();

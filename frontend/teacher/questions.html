@@ -24,6 +24,7 @@
     .btn { padding: 0.6rem 1.1rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 600; }
     .btn-green  { background: #276749; color: #fff; width: 100%; margin-top: 1rem; }
     .btn-blue   { background: #3182ce; color: #fff; }
+    .btn-secondary { background: #e2e8f0; color: #2d3748; }
     .btn-red    { background: #fed7d7; color: #c53030; }
     .btn-sm     { padding: 0.3rem 0.65rem; font-size: 0.8rem; }
     .btn:hover  { opacity: 0.88; }
@@ -73,6 +74,11 @@
           <button type="button" class="btn btn-blue btn-sm" id="add-option-btn" aria-label="Add option" style="margin-top:0.4rem">+ Add Option</button>
         </div>
 
+        <div id="short-answer-container" class="options-area" style="display:none">
+          <label for="q-model-answer">Model Answer <small>(expected answer, used as a reference for manual grading)</small></label>
+          <textarea id="q-model-answer" aria-label="Model answer" placeholder="Enter the expected/model answer..."></textarea>
+        </div>
+
         <label for="q-subject">Subject</label>
         <input type="text" id="q-subject" aria-required="true" placeholder="e.g. Mathematics" />
 
@@ -86,7 +92,8 @@
           <option value="Hard">Hard</option>
         </select>
 
-        <button type="submit" class="btn btn-green" aria-label="Save question">Save Question</button>
+        <button type="submit" class="btn btn-green" id="q-submit" aria-label="Save question">Save Question</button>
+        <button type="button" class="btn btn-secondary" id="cancel-edit" aria-label="Cancel edit" style="display:none;margin-top:0.5rem;width:100%">Cancel Edit</button>
       </form>
     </section>
 
@@ -122,47 +129,75 @@
       return (await res.json()).csrfToken;
     }
 
+    // ── Question list + edit state ─────────────────────────────────────────
+    let loadedQuestions = [];
+    let editingId = null;     // null = create mode; question id = edit mode
+    let editStoredCorrect = null;
+
     // ── Build options UI based on question type ────────────────────────────
     const typeSelect = document.getElementById('q-type');
     const optionsContainer = document.getElementById('options-container');
     const optionsList = document.getElementById('options-list');
     const addOptionBtn = document.getElementById('add-option-btn');
+    const shortAnswerContainer = document.getElementById('short-answer-container');
 
-    function buildOptionsUI() {
+    function buildOptionsUI(prefill = null) {
       const type = typeSelect.value;
+      const opts = prefill ? prefill.options : null;
+      const correct = prefill ? prefill.correctAnswer : null;
       optionsList.innerHTML = '';
+      shortAnswerContainer.style.display = 'none';
 
       if (type === 'TrueFalse') {
         optionsContainer.style.display = 'block';
         addOptionBtn.style.display = 'none';
         ['True', 'False'].forEach(val => {
+          const isChecked = correct !== undefined && correct !== null && String(correct) === val;
           optionsList.innerHTML += `
             <div class="option-row">
-              <input type="radio" name="correct" value="${val}" aria-label="Correct answer: ${val}" />
+              <input type="radio" name="correct" value="${val}" ${isChecked ? 'checked' : ''} aria-label="Correct answer: ${val}" />
               <input type="text" value="${val}" readonly aria-label="Option ${val}" />
             </div>`;
         });
-      } else if (type === 'MCQ_single') {
+      } else if (type === 'MCQ_single' || type === 'MCQ_multiple') {
         optionsContainer.style.display = 'block';
         addOptionBtn.style.display = 'inline-block';
-        addOption('radio');
-        addOption('radio');
-      } else if (type === 'MCQ_multiple') {
-        optionsContainer.style.display = 'block';
-        addOptionBtn.style.display = 'inline-block';
-        addOption('checkbox');
-        addOption('checkbox');
+        const inputType = type === 'MCQ_multiple' ? 'checkbox' : 'radio';
+        if (Array.isArray(opts) && opts.length) {
+          opts.forEach(opt => addOption(inputType, opt, correct));
+        } else {
+          addOption(inputType);
+          addOption(inputType);
+        }
       } else {
+        // ShortAnswer: no options list; show the model-answer field instead.
         optionsContainer.style.display = 'none';
+        shortAnswerContainer.style.display = 'block';
+        const modelAnswer = document.getElementById('q-model-answer');
+        if (modelAnswer) {
+          modelAnswer.value = (correct !== undefined && correct !== null) ? String(correct) : '';
+        }
       }
     }
 
-    function addOption(inputType) {
+    function addOption(inputType, optText, correct) {
       const row = document.createElement('div');
       row.className = 'option-row';
+      let checked = '';
+      if (optText !== undefined && correct !== undefined && correct !== null) {
+        if (inputType === 'checkbox') {
+          const arr = Array.isArray(correct) ? correct.map(String) : [String(correct)];
+          checked = arr.includes(String(optText)) ? 'checked' : '';
+        } else {
+          checked = String(correct) === String(optText) ? 'checked' : '';
+        }
+      }
+      const textAttr = optText !== undefined
+        ? `value="${String(optText).replace(/"/g, '&quot;')}"`
+        : '';
       row.innerHTML = `
-        <input type="${inputType}" name="correct" aria-label="Mark as correct answer" />
-        <input type="text" placeholder="Option text" aria-label="Option text" />
+        <input type="${inputType}" name="correct" ${checked} aria-label="Mark as correct answer" />
+        <input type="text" ${textAttr} placeholder="Option text" aria-label="Option text" />
         <button type="button" class="btn btn-red btn-sm" aria-label="Remove option" onclick="this.parentElement.remove()">✕</button>`;
       optionsList.appendChild(row);
     }
@@ -204,13 +239,22 @@
         if (!checked.length) { errorMsg.textContent = 'Please select at least one correct answer.'; errorMsg.style.display = 'block'; return; }
         correctAnswer = checked.map(c => c.closest('.option-row').querySelector('input[type=text]').value.trim());
       } else {
-        correctAnswer = '';
+        // ShortAnswer: model answer (reference for manual grading). Required so
+        // creation passes the backend correctAnswer validation.
+        correctAnswer = (document.getElementById('q-model-answer').value || '').trim();
+        if (!correctAnswer) {
+          errorMsg.textContent = 'Please enter a model answer for the short-answer question.';
+          errorMsg.style.display = 'block';
+          return;
+        }
       }
 
       try {
         const csrfToken = await getCsrfToken();
-        const res = await fetch('/api/questions', {
-          method: 'POST',
+        const url = editingId ? `/api/questions/${editingId}` : '/api/questions';
+        const method = editingId ? 'PUT' : 'POST';
+        const res = await fetch(url, {
+          method,
           headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
           credentials: 'include',
           body: JSON.stringify({ type, text, options, correctAnswer, subject, topic, difficulty }),
@@ -221,16 +265,54 @@
           errorMsg.style.display = 'block';
           return;
         }
-        successMsg.textContent = 'Question saved successfully.';
+        successMsg.textContent = editingId ? 'Question updated successfully.' : 'Question saved successfully.';
         successMsg.style.display = 'block';
-        document.getElementById('question-form').reset();
-        buildOptionsUI();
+        resetToCreateMode();
         loadQuestions();
       } catch {
-        errorMsg.textContent = 'Failed to save question.';
+        errorMsg.textContent = editingId ? 'Failed to update question.' : 'Failed to save question.';
         errorMsg.style.display = 'block';
       }
     });
+
+    // ── Edit / cancel helpers ──────────────────────────────────────────────
+    function parseJson(v) {
+      if (v == null) return null;
+      if (typeof v === 'string') { try { return JSON.parse(v); } catch { return v; } }
+      return v;
+    }
+
+    function editQuestion(id) {
+      const q = loadedQuestions.find(x => Number(x.id) === Number(id));
+      if (!q) return;
+      editingId = id;
+      editStoredCorrect = parseJson(q.correct_answer);
+      typeSelect.value = q.type;
+      document.getElementById('q-text').value = q.text || '';
+      document.getElementById('q-subject').value = q.subject || '';
+      document.getElementById('q-topic').value = q.topic || '';
+      document.getElementById('q-difficulty').value = q.difficulty || 'Easy';
+      const opts = parseJson(q.options);
+      buildOptionsUI({ options: Array.isArray(opts) ? opts : [], correctAnswer: editStoredCorrect });
+      document.getElementById('create-heading').textContent = 'Edit Question';
+      document.getElementById('q-submit').textContent = 'Update Question';
+      document.getElementById('cancel-edit').style.display = 'inline-block';
+      document.getElementById('form-success').style.display = 'none';
+      document.getElementById('form-error').style.display = 'none';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetToCreateMode() {
+      editingId = null;
+      editStoredCorrect = null;
+      document.getElementById('question-form').reset();
+      document.getElementById('create-heading').textContent = 'Add Question';
+      document.getElementById('q-submit').textContent = 'Save Question';
+      document.getElementById('cancel-edit').style.display = 'none';
+      buildOptionsUI();
+    }
+
+    document.getElementById('cancel-edit').addEventListener('click', resetToCreateMode);
 
     // ── Load questions ─────────────────────────────────────────────────────
     async function loadQuestions() {
@@ -247,6 +329,7 @@
       if (res.status === 401) { window.location.href = '/index.html'; return; }
       const data = await res.json();
       const questions = data.questions || [];
+      loadedQuestions = questions;
 
       if (!questions.length) {
         tbody.innerHTML = '<tr><td colspan="5" class="empty">No questions found.</td></tr>';
@@ -261,7 +344,10 @@
           <td>${typeLabel}</td>
           <td>${q.subject}</td>
           <td><span class="badge ${badgeClass}">${q.difficulty}</span></td>
-          <td><button class="btn btn-red btn-sm" onclick="deleteQuestion(${q.id})" aria-label="Delete question">Delete</button></td>
+          <td>
+            <button class="btn btn-blue btn-sm" onclick="editQuestion(${q.id})" aria-label="Edit question" style="margin-right:0.25rem">Edit</button>
+            <button class="btn btn-red btn-sm" onclick="deleteQuestion(${q.id})" aria-label="Delete question">Delete</button>
+          </td>
         </tr>`;
       }).join('');
     }
