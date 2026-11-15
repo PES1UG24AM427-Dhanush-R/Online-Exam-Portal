@@ -8,6 +8,10 @@ const { authorize } = require('../../middleware/rbac');
 const { handleValidation } = require('../../middleware/validate');
 const { csrfProtection } = require('../../middleware/csrf');
 
+// Student routes — view own released results
+router.get('/results',          authenticate, authorize('Student'), controller.listMyResults);
+router.get('/results/:examId',  authenticate, authorize('Student'), controller.getMyResult);
+
 // Teacher routes
 router.get('/:attemptId',        authenticate, authorize('Teacher'), controller.getAttemptForGrading);
 router.patch('/:attemptId',      csrfProtection, authenticate, authorize('Teacher'),
@@ -16,8 +20,5 @@ router.patch('/:attemptId',      csrfProtection, authenticate, authorize('Teache
   controller.saveManualScores
 );
 router.patch('/:examId/release', csrfProtection, authenticate, authorize('Teacher'), controller.releaseResults);
-
-// Student route — view own result
-router.get('/results/:examId',   authenticate, authorize('Student'), controller.getMyResult);
 
 module.exports = router;

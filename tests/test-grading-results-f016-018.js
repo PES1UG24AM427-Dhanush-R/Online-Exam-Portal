@@ -170,6 +170,10 @@ async function run() {
     if (preResultRes.status !== 403) {
       throw new Error(`Expected 403 RESULTS_NOT_RELEASED, got ${preResultRes.status}`);
     }
+    const preListRes = await student.fetch(`${BASE_URL}/api/grading/results`);
+    if (!preListRes.ok || (await preListRes.json()).results.some(result => result.exam_id === 2)) {
+      throw new Error('My Results should load without showing the unreleased exam.');
+    }
     console.log('✓ TC-Grade-03 / OEP-F-018 (Part 1): Student blocked from viewing unreleased results.');
 
     // 5. Verify OEP-F-017: Manual grading by Teacher
@@ -230,6 +234,13 @@ async function run() {
 
     if (parseFloat(postResultData.result.total_score) !== 6.5) {
       throw new Error(`Student result total score expected 6.5, got ${postResultData.result.total_score}`);
+    }
+    const postListRes = await student.fetch(`${BASE_URL}/api/grading/results`);
+    if (!postListRes.ok) throw new Error(`My Results failed after release: ${postListRes.status}`);
+    const { results } = await postListRes.json();
+    const listedResult = results.find(result => result.exam_id === 2);
+    if (Number(listedResult?.total_score) !== 6.5 || Number(listedResult?.total_marks) !== 9) {
+      throw new Error('My Results should show the released score of 6.5 / 9.0.');
     }
     console.log('✓ TC-Grade-03 / OEP-F-018 (Part 2): Student successfully viewed result with total score 6.5 / 9.0.');
 
