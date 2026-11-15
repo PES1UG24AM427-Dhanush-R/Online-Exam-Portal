@@ -1,6 +1,5 @@
 
 require('dotenv').config();
-
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
@@ -55,7 +54,7 @@ app.get('/api/health', async (req, res) => {
   } catch {
     res.status(500).json({
       status: 'degraded',
-      message: 'Database unreachable'
+      message: 'Database unreachable',
     });
   }
 });
@@ -65,7 +64,7 @@ app.use('/api', (req, res) => {
   res.status(404).json({
     error: {
       code: 'NOT_FOUND',
-      message: 'The requested API endpoint was not found.'
+      message: 'The requested API endpoint was not found.',
     },
   });
 });
@@ -78,33 +77,23 @@ app.use((err, req, res, next) => {
     return res.status(403).json({
       error: {
         code: 'INVALID_CSRF_TOKEN',
-        message: 'Form submission could not be verified.'
+        message: 'Form submission could not be verified.',
       },
     });
   }
 
-  if (
-    err instanceof SyntaxError &&
-    err.status === 400 &&
-    'body' in err
-  ) {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
     return res.status(400).json({
       error: {
         code: 'BAD_REQUEST',
-        message: 'Invalid JSON payload provided.'
+        message: 'Invalid JSON payload provided.',
       },
     });
   }
 
   const status = err.status || 500;
-  const isInternal =
-    status >= 500 ||
-    (err.code && err.code.startsWith('ER_'));
-
-  const code = isInternal
-    ? 'INTERNAL_ERROR'
-    : (err.code || 'BAD_REQUEST');
-
+  const isInternal = status >= 500 || (err.code && err.code.startsWith('ER_'));
+  const code = isInternal ? 'INTERNAL_ERROR' : (err.code || 'BAD_REQUEST');
   const message = isInternal
     ? 'Something went wrong. Please try again later.'
     : err.message;
@@ -114,37 +103,38 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start HTTP and HTTPS servers
-const HTTP_PORT = process.env.PORT || 3000;
+// Server startup
+const PORT = process.env.PORT || 3000;
 const HTTPS_PORT = process.env.HTTPS_PORT || 3443;
 
-const certDirectory = path.join(__dirname, '../certs');
+const keyPath = path.join(__dirname, '../certs/localhost-key.pem');
+const certPath = path.join(__dirname, '../certs/localhost-cert.pem');
 
-const httpsOptions = {
-  key: fs.readFileSync(
-    path.join(certDirectory, 'localhost-key.pem')
-  ),
-  cert: fs.readFileSync(
-    path.join(certDirectory, 'localhost-cert.pem')
-  ),
-};
+const certificatesAvailable =
+  fs.existsSync(keyPath) && fs.existsSync(certPath);
 
-// Redirect HTTP requests to HTTPS
-http.createServer((req, res) => {
-  const host = req.headers.host || 'localhost';
+if (certificatesAvailable && process.env.CI !== 'true') {
+  const httpsOptions = {
+    key: fs.readFileSync(keyPath),
+    cert: fs.readFileSync(certPath),
+  };
 
-  res.writeHead(301, {
-    Location: `https://${host.split(':')[0]}:${HTTPS_PORT}${req.url}`
+  https.createServer(httpsOptions, app).listen(HTTPS_PORT, () => {
+    console.log(`Online Exam Portal HTTPS running on port ${HTTPS_PORT}`);
   });
 
-  res.end();
-}).listen(HTTP_PORT, () => {
-  console.log(`HTTP redirect server running on port ${HTTP_PORT}`);
-});
-
-// HTTPS application server
-https.createServer(httpsOptions, app).listen(HTTPS_PORT, () => {
-  console.log(`Online Exam Portal HTTPS running on port ${HTTPS_PORT}`);
-});
+  http.createServer((req, res) => {
+    res.writeHead(301, {
+      Location: `https://${req.headers.host.split(':')[0]}:${HTTPS_PORT}${req.url}`,
+    });
+    res.end();
+  }).listen(PORT, () => {
+    console.log(`HTTP redirect server running on port ${PORT}`);
+  });
+} else {
+  app.listen(PORT, () => {
+    console.log(`Online Exam Portal running on port ${PORT} (HTTP)`);
+  });
+}
 
 module.exports = app;
