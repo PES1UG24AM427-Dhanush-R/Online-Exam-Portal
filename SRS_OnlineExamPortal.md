@@ -424,7 +424,7 @@ The system is considered ready for acceptance when all of the following are sati
 | OEP-F-015 | Prevent duplicate submission | 4.4 | ExamTakingModule | TC-Take-04 | I | |
 | OEP-F-016 | Auto-grading for MCQ / True/False | 4.5 | GradingModule | TC-Grade-01 | I | |
 | OEP-F-017 | Manual grading interface for Short Answer | 4.5 | GradingModule | TC-Grade-02 | I | |
-| OEP-F-018 | Result release by Teacher | 4.5 | GradingModule | TC-Grade-03 | I | Result release enforced server-side; student dashboard My Results view not yet implemented. |
+| OEP-F-018 | Result release by Teacher | 4.5 | GradingModule | TC-Grade-03 | I | My Results displays the signed-in student's released scores. |
 | OEP-F-019 | Admin user management | 4.6 | AdminModule | TC-Admin-01 | I | |
 | OEP-F-020 | Admin active exam dashboard | 4.6 | AdminModule | TC-Admin-02 | I | |
 | OEP-NF-001 | Response time ≤ 3s at 95th percentile | 5 | All | TC-Perf-01 | I | |

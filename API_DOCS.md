@@ -43,6 +43,7 @@ This document provides complete specification for all REST API endpoints provide
   - [GET /api/grading/:attemptId](#get-apigradingattemptid)
   - [PATCH /api/grading/:attemptId](#patch-apigradingattemptid)
   - [PATCH /api/grading/:examId/release](#patch-apigradingexamidrelease)
+  - [GET /api/grading/results](#get-apigradingresults)
   - [GET /api/grading/results/:examId](#get-apigradingresultsexamid)
 - [AdminModule](#adminmodule)
   - [GET /api/admin/users](#get-apiadminusers)
@@ -963,6 +964,27 @@ This document provides complete specification for all REST API endpoints provide
       }
     }
     ```
+
+---
+
+### GET /api/grading/results
+
+- **Description:** Lists the signed-in Student's scored submissions for exams with results released by the Teacher, newest release first. Returns an empty array when no scores are available.
+- **Authentication Required:** Yes
+- **Role Required:** Student
+- **Success Response:** `200 OK`
+  ```json
+  {
+    "results": [
+      {
+        "exam_id": 1,
+        "exam_title": "Midterm Examination",
+        "total_score": "85.50",
+        "total_marks": "100.00"
+      }
+    ]
+  }
+  ```
 
 ---
 

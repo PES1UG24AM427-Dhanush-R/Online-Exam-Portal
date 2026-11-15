@@ -46,7 +46,13 @@
 
     <section class="section" aria-labelledby="results-heading">
       <h2 id="results-heading">My Results</h2>
-      <div id="results-container"><p class="empty">No results available yet.</p></div>
+      <p id="results-status" role="status" class="empty">Loading results...</p>
+      <table id="results-table" aria-labelledby="results-heading" hidden>
+        <thead>
+          <tr><th scope="col">Exam</th><th scope="col">Score</th></tr>
+        </thead>
+        <tbody id="results-tbody"></tbody>
+      </table>
     </section>
   </main>
 
@@ -107,6 +113,38 @@
       window.location.href = `/student/exam.html?examId=${examId}`;
     }
 
+    async function loadResults() {
+      const status = document.getElementById('results-status');
+      try {
+        const res = await fetch('/api/grading/results', { credentials: 'include' });
+        if (res.status === 401) {
+          window.location.href = '/index.html';
+          return;
+        }
+        if (!res.ok) throw new Error('Results request failed');
+
+        const { results } = await res.json();
+        if (results.length === 0) {
+          status.textContent = 'No released results yet.';
+          return;
+        }
+
+        const tbody = document.getElementById('results-tbody');
+        for (const result of results) {
+          const row = tbody.insertRow();
+          row.insertCell().textContent = result.exam_title;
+          row.insertCell().textContent = result.total_marks == null
+            ? result.total_score
+            : `${result.total_score} / ${result.total_marks}`;
+        }
+
+        document.getElementById('results-table').hidden = false;
+        status.hidden = true;
+      } catch {
+        status.textContent = 'Failed to load results. Refresh the page to try again.';
+      }
+    }
+
     document.getElementById('logout-btn').addEventListener('click', async () => {
       const csrfToken = await getCsrfToken();
       await fetch('/api/auth/logout', {
@@ -118,6 +156,7 @@
     });
 
     loadExams();
+    loadResults();
   </script>
 </body>
 </html>

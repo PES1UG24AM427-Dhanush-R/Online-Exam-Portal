@@ -118,6 +118,28 @@ exports.releaseResults = async (req, res, next) => {
   }
 };
 
+// GET /api/grading/results — list the student's released scores (OEP-F-018)
+exports.listMyResults = async (req, res, next) => {
+  try {
+    const [results] = await pool.query(
+      `SELECT a.exam_id, a.total_score, e.title AS exam_title,
+              (SELECT SUM(eq.marks) FROM exam_questions eq WHERE eq.exam_id = e.id) AS total_marks
+       FROM attempts a
+       JOIN exams e ON e.id = a.exam_id
+       JOIN results_released r ON r.exam_id = a.exam_id
+       WHERE a.student_id = ?
+         AND a.status IN ('submitted', 'timed_out')
+         AND a.total_score IS NOT NULL
+       ORDER BY r.released_at DESC, a.exam_id DESC`,
+      [req.user.id]
+    );
+
+    res.set('Cache-Control', 'private, no-store').json({ results });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/grading/results/:examId — Student views their result (OEP-F-018)
 // Only visible after Teacher releases results
