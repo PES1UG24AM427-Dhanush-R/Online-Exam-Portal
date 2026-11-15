@@ -74,6 +74,11 @@
           <button type="button" class="btn btn-blue btn-sm" id="add-option-btn" aria-label="Add option" style="margin-top:0.4rem">+ Add Option</button>
         </div>
 
+        <div id="short-answer-container" class="options-area" style="display:none">
+          <label for="q-model-answer">Model Answer <small>(expected answer, used as a reference for manual grading)</small></label>
+          <textarea id="q-model-answer" aria-label="Model answer" placeholder="Enter the expected/model answer..."></textarea>
+        </div>
+
         <label for="q-subject">Subject</label>
         <input type="text" id="q-subject" aria-required="true" placeholder="e.g. Mathematics" />
 
@@ -134,12 +139,14 @@
     const optionsContainer = document.getElementById('options-container');
     const optionsList = document.getElementById('options-list');
     const addOptionBtn = document.getElementById('add-option-btn');
+    const shortAnswerContainer = document.getElementById('short-answer-container');
 
     function buildOptionsUI(prefill = null) {
       const type = typeSelect.value;
       const opts = prefill ? prefill.options : null;
       const correct = prefill ? prefill.correctAnswer : null;
       optionsList.innerHTML = '';
+      shortAnswerContainer.style.display = 'none';
 
       if (type === 'TrueFalse') {
         optionsContainer.style.display = 'block';
@@ -163,7 +170,13 @@
           addOption(inputType);
         }
       } else {
+        // ShortAnswer: no options list; show the model-answer field instead.
         optionsContainer.style.display = 'none';
+        shortAnswerContainer.style.display = 'block';
+        const modelAnswer = document.getElementById('q-model-answer');
+        if (modelAnswer) {
+          modelAnswer.value = (correct !== undefined && correct !== null) ? String(correct) : '';
+        }
       }
     }
 
@@ -226,7 +239,14 @@
         if (!checked.length) { errorMsg.textContent = 'Please select at least one correct answer.'; errorMsg.style.display = 'block'; return; }
         correctAnswer = checked.map(c => c.closest('.option-row').querySelector('input[type=text]').value.trim());
       } else {
-        correctAnswer = (editingId && typeof editStoredCorrect === 'string') ? editStoredCorrect : '';
+        // ShortAnswer: model answer (reference for manual grading). Required so
+        // creation passes the backend correctAnswer validation.
+        correctAnswer = (document.getElementById('q-model-answer').value || '').trim();
+        if (!correctAnswer) {
+          errorMsg.textContent = 'Please enter a model answer for the short-answer question.';
+          errorMsg.style.display = 'block';
+          return;
+        }
       }
 
       try {

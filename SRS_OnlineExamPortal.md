@@ -150,11 +150,13 @@ The system does not depend on any external LMS but is designed to be extensible 
 
 ### 3.1 User Interfaces
 
-- **Student Dashboard:** Lists currently active (in-window) published exams and provides access to the student's released results and notifications
+- **Student Dashboard:** Lists upcoming and past exams, results, and notifications
 - **Exam Interface:** Displays questions one at a time or all at once (configurable by Teacher), with a visible countdown timer and a submission button
 - **Teacher Dashboard:** Provides access to question bank, exam management, grading queue, and analytics
 - **Admin Dashboard:** Shows user management, active exam monitoring, and system configuration panels
 - **Accessibility:** All UI screens must have sufficient color contrast, keyboard-navigable elements, and screen-reader compatible labels conforming to WCAG 2.1 AA guidelines
+
+> **Implementation gap (Student Dashboard):** The current student exam listing (`GET /api/exams`) returns only exams currently within their active window (start ≤ now ≤ end). Upcoming exams (before start) and past exams (after end) are not yet returned, so the Student Dashboard does not currently list upcoming or past exams as specified above. This is a known implementation gap.
 
 ### 3.2 Hardware Interfaces
 
@@ -222,7 +224,7 @@ The Online Exam Portal is a pure software system and has no direct hardware inte
 |---|---|---|---|---|---|---|
 | OEP-F-009 | The system shall allow Teachers to create an exam by selecting questions from the question bank and assigning marks to each question. | Functional | High | Teacher | AC: Exam is saved with correct question list and mark allocations. Test: TC-Exam-01 | Total marks auto-calculated |
 | OEP-F-010 | The system shall allow Teachers to configure exam settings including: duration (in minutes), start datetime, end datetime, and whether question order is randomized. | Functional | High | Teacher | AC: All configured settings are enforced when the exam runs. Test: TC-Exam-02 | Start/end window controls when Students can access the exam |
-| OEP-F-011 | The system shall allow Teachers to publish an exam, making it visible and accessible to enrolled Students within the configured time window. | Functional | High | Teacher | AC: A published exam appears on the Student dashboard only while it is within its active time window (on or after the start datetime and on or before the end datetime); it is not visible before the start datetime or after the end datetime. Test: TC-Exam-03 | Unpublished exams are not visible to Students |
+| OEP-F-011 | The system shall allow Teachers to publish an exam, making it visible and accessible to enrolled Students within the configured time window. | Functional | High | Teacher | AC: Published exam appears on Student dashboard only after start datetime. Test: TC-Exam-03 | Unpublished exams are not visible to Students |
 
 ---
 
@@ -410,9 +412,9 @@ The system is considered ready for acceptance when all of the following are sati
 | OEP-F-003 | Account lockout after 5 failed attempts | 4.1 | AuthModule | TC-Auth-03 | I | |
 | OEP-F-004 | Role-based access control enforcement | 4.1 | AuthModule | TC-Auth-04 | I | |
 | OEP-F-005 | Password reset via email link | 4.1 | AuthModule | TC-Auth-05 | I | |
-| OEP-F-006 | Question creation (4 types) | 4.2 | QuestionBankModule | TC-QB-01 | I | |
+| OEP-F-006 | Question creation (4 types) | 4.2 | QuestionBankModule | TC-QB-01 | I | ShortAnswer creation requires a non-empty model answer (correctAnswer); other 3 types complete. |
 | OEP-F-007 | Question tagging by subject/topic/difficulty | 4.2 | QuestionBankModule | TC-QB-02 | I | |
-| OEP-F-008 | Question edit / delete (not in active exam) | 4.2 | QuestionBankModule | TC-QB-03 | I | |
+| OEP-F-008 | Question edit / delete (not in active exam) | 4.2 | QuestionBankModule | TC-QB-03 | I | Edit interface added for all 4 types incl. ShortAnswer (model answer prefilled). |
 | OEP-F-009 | Exam creation from question bank | 4.3 | ExamModule | TC-Exam-01 | I | |
 | OEP-F-010 | Exam settings configuration | 4.3 | ExamModule | TC-Exam-02 | I | |
 | OEP-F-011 | Exam publishing | 4.3 | ExamModule | TC-Exam-03 | I | |
@@ -422,7 +424,7 @@ The system is considered ready for acceptance when all of the following are sati
 | OEP-F-015 | Prevent duplicate submission | 4.4 | ExamTakingModule | TC-Take-04 | I | |
 | OEP-F-016 | Auto-grading for MCQ / True/False | 4.5 | GradingModule | TC-Grade-01 | I | |
 | OEP-F-017 | Manual grading interface for Short Answer | 4.5 | GradingModule | TC-Grade-02 | I | |
-| OEP-F-018 | Result release by Teacher | 4.5 | GradingModule | TC-Grade-03 | I | |
+| OEP-F-018 | Result release by Teacher | 4.5 | GradingModule | TC-Grade-03 | I | Result release enforced server-side; student dashboard My Results view not yet implemented. |
 | OEP-F-019 | Admin user management | 4.6 | AdminModule | TC-Admin-01 | I | |
 | OEP-F-020 | Admin active exam dashboard | 4.6 | AdminModule | TC-Admin-02 | I | |
 | OEP-NF-001 | Response time ≤ 3s at 95th percentile | 5 | All | TC-Perf-01 | I | |
