@@ -1,5 +1,32 @@
 const pool = require('../../config/db');
 
+// GET /api/grading/attempts?examId=... — list submissions for a teacher's exam
+exports.listAttemptsForGrading = async (req, res, next) => {
+  const { examId } = req.query;
+  if (typeof examId !== 'string' || !/^\d+$/.test(examId) || Number(examId) < 1 || Number(examId) > 4294967295) {
+    return res.status(400).json({ error: { code: 'INVALID_EXAM_ID', message: 'A valid exam ID is required.' } });
+  }
+
+  try {
+    const [rows] = await pool.execute(
+      `SELECT a.id, u.full_name AS student_name, a.submitted_at, a.status
+       FROM exams e
+       LEFT JOIN attempts a ON a.exam_id = e.id AND a.status IN ('submitted', 'timed_out')
+       LEFT JOIN users u ON a.student_id = u.id
+       WHERE e.id = ? AND e.created_by = ?
+       ORDER BY a.submitted_at DESC, a.id DESC`,
+      [Number(examId), req.user.id]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Exam not found.' } });
+    }
+
+    res.json({ attempts: rows.filter(row => row.id !== null) });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/grading/:attemptId — get answers for manual grading (OEP-F-017)
 // ─────────────────────────────────────────────────────────────────────────────

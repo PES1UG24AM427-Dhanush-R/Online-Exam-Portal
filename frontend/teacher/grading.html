@@ -113,27 +113,36 @@
     // When exam selected, load submitted attempts
     document.getElementById('exam-select').addEventListener('change', async function () {
       const attemptSelect = document.getElementById('attempt-select');
-      attemptSelect.innerHTML = '<option value="">Loading...</option>';
+      const examId = this.value;
       attemptSelect.disabled = true;
+      attemptSelect.replaceChildren(new Option(examId ? 'Loading...' : 'Select an exam first', ''));
 
-      if (!this.value) return;
-      currentExamId = parseInt(this.value);
+      if (!examId) return;
+      currentExamId = Number(examId);
 
-      // Fetch all submitted attempts for this exam via admin/grading
-      // We use the exam's attempts — Teacher sees all submissions
-      const res = await fetch(`/api/grading/attempts?examId=${this.value}`, { credentials: 'include' });
-      if (!res.ok) {
-        // Fallback: use exam detail to list attempts
-        attemptSelect.innerHTML = '<option value="">No submissions found</option>';
+      try {
+        const res = await fetch(`/api/grading/attempts?examId=${encodeURIComponent(examId)}`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load submissions');
+        const { attempts } = await res.json();
+        if (this.value !== examId) return;
+
+        if (attempts.length === 0) {
+          attemptSelect.replaceChildren(new Option('No submissions yet', ''));
+          return;
+        }
+
+        attemptSelect.replaceChildren(...attempts.map(attempt => {
+          const status = attempt.status === 'timed_out' ? 'timed out' : 'submitted';
+          const date = attempt.submitted_at ? ` ${new Date(attempt.submitted_at).toLocaleString()}` : '';
+          return new Option(`${attempt.student_name} — ${status}${date}`, attempt.id);
+        }));
         attemptSelect.disabled = false;
-        return;
+      } catch {
+        if (this.value === examId) {
+          attemptSelect.replaceChildren(new Option('Could not load submissions', ''));
+          attemptSelect.disabled = true;
+        }
       }
-      const data = await res.json();
-      const attempts = data.attempts || [];
-      attemptSelect.innerHTML = attempts.length
-        ? attempts.map(a => `<option value="${a.id}">${a.student_name} — submitted ${new Date(a.submitted_at).toLocaleString()}</option>`).join('')
-        : '<option value="">No submissions yet</option>';
-      attemptSelect.disabled = false;
     });
 
     document.getElementById('load-btn').addEventListener('click', async () => {

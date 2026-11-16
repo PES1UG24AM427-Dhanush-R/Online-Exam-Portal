@@ -13,6 +13,7 @@ router.get('/results',          authenticate, authorize('Student'), controller.l
 router.get('/results/:examId',  authenticate, authorize('Student'), controller.getMyResult);
 
 // Teacher routes
+router.get('/attempts',          authenticate, authorize('Teacher'), controller.listAttemptsForGrading);
 router.get('/:attemptId',        authenticate, authorize('Teacher'), controller.getAttemptForGrading);
 router.patch('/:attemptId',      csrfProtection, authenticate, authorize('Teacher'),
   [body('scores').isArray({ min: 1 }).withMessage('Scores array is required.')],
