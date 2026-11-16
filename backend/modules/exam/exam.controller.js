@@ -236,8 +236,6 @@ exports.listExams = async (req, res, next) => {
            LIMIT 1) AS attempt_status
          FROM exams e
          WHERE e.status = 'published'
-           AND e.start_datetime <= UTC_TIMESTAMP()
-           AND e.end_datetime >= UTC_TIMESTAMP()
          ORDER BY e.start_datetime ASC`,
         [req.user.id]
       );
