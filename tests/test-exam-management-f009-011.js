@@ -548,7 +548,8 @@ async function run() {
     pass('Publishing an already published exam is rejected.');
 
     // ------------------------------------------------
-    // Student list should only show exams in window.
+    
+    // Student list should include upcoming, active and past published exams.
     // ------------------------------------------------
 
     const futureExamStart = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -557,9 +558,13 @@ async function run() {
     const expiredExamStart = new Date(Date.now() - 26 * 60 * 60 * 1000);
     const expiredExamEnd = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
+    const activeExamStart = new Date(Date.now() - 60 * 60 * 1000);
+    const activeExamEnd = new Date(Date.now() + 60 * 60 * 1000);
+
     for (const [title, start, end] of [
       ['FUTURE', futureExamStart, futureExamEnd],
-      ['EXPIRED', expiredExamStart, expiredExamEnd]
+      ['EXPIRED', expiredExamStart, expiredExamEnd],
+      ['ACTIVE', activeExamStart, activeExamEnd]
     ]) {
       const [result] = await pool.query(
         `INSERT INTO exams
@@ -597,26 +602,37 @@ async function run() {
 
     const futureId = examIds[1];
     const expiredId = examIds[2];
+    const activeId = examIds[3];
 
-    if (visibleIds.includes(futureId)) {
-      throw new Error('Future published exam was visible to Student.');
+    if (!visibleIds.includes(futureId)) {
+      throw new Error('Upcoming published exam was missing from Student list.');
     }
 
-    pass('Future published exam is hidden from Student.');
+    pass('Upcoming published exam is visible to Student.');
 
-    if (visibleIds.includes(expiredId)) {
-      throw new Error('Expired published exam was visible to Student.');
+    if (!visibleIds.includes(expiredId)) {
+      throw new Error('Past published exam was missing from Student list.');
     }
 
-    pass('Expired published exam is hidden from Student.');
+    pass('Past published exam is visible to Student.');
+
+    if (!visibleIds.includes(activeId)) {
+      throw new Error('Active published exam was missing from Student list.');
+    }
+
+    pass('Active published exam is visible to Student.');
 
     // The main exam is scheduled for one hour in the future.
-    // It should not appear in the Student list until its start time.
-    if (visibleIds.includes(examId)) {
-      throw new Error('Future-start exam appeared before its start time.');
+    if (!visibleIds.includes(examId)) {
+      throw new Error('Main upcoming exam was missing from Student list.');
     }
 
-    pass('Published exam is hidden before its scheduled start time.');
+    pass('Upcoming exam created through the API is visible to Student.');
+
+    // ------------------------------------------------
+    // Teacher list should include owned exams.
+    // ------------------------------------------------
+
 
     // ------------------------------------------------
     // Teacher list should include owned exams.
